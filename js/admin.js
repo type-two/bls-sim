@@ -105,6 +105,7 @@ function updateTimerLabel(){ var m = Math.max(0, parseInt(timerMinutes.value||'0
   function recordSession(){ var n = (patientName.value||'').trim()||'Unnamed'; var st = BLS.loadState(); if(!st.startedAt) return; var end = Date.now(); var durationSec = Math.floor((end - st.startedAt)/1000); var p = getPatient(n); p.sessions.push({ start: st.startedAt, end: end, durationSec: durationSec }); p.count = (p.count||0)+1; p.last = { start: st.startedAt, end: end, durationSec: durationSec }; setPatient(p); refreshPatientUI() }
   function refreshPresetList(){ var names = BLS.listPresets(); var html=''; for(var i=0;i<names.length;i++){ var n=names[i]; html += '<option value="'+n+'">'+n+'</option>' } presetList.innerHTML = html }
   function applyState(next, broadcast){ state = BLS.mergeState(state, next||{}); renderer.setState(state); if(state.running){ renderer.start() } else { renderer.stop() } if(broadcast){ chan.send(state) } }
+  function publishState(){ try{ if(wsConnected && ws){ ws.send(JSON.stringify({type:'state', sessionId: wsSid||'default', payload: BLS.loadState()})) } }catch(e){} }
 shapeControls.addEventListener('click', function(e){ var d = e.target.dataset.shape; if(!d) return; applyState({shape:d}, true); setActive(shapeControls,'shape','shape'); });
   directionControls.addEventListener('click', function(e){ var d = e.target.dataset.direction; if(!d) return; applyState({direction:d}, true); setActive(directionControls,'direction','direction'); });
   easingControls.addEventListener('click', function(e){ var d = e.target.dataset.easing; if(!d) return; applyState({easingMode:d}, true); setActive(easingControls,'easing','easingMode'); });
@@ -112,18 +113,18 @@ shapeControls.addEventListener('click', function(e){ var d = e.target.dataset.sh
   bgColor.addEventListener('input', function(){ applyState({bgColor:bgColor.value}, true); });
   shapePreset.addEventListener('click', function(e){ var c = e.target.dataset.color; if(!c) return; shapeColor.value = c; applyState({shapeColor:c}, true); });
   bgPreset.addEventListener('click', function(e){ var c = e.target.dataset.color; if(!c) return; bgColor.value = c; applyState({bgColor:c}, true); });
-  speed.addEventListener('input', function(){ updateSpeedLabel(); var m = (BLS.loadState().speedMultiplier||1); applyState({speed:parseInt(speed.value,10)*m}, true); });
+  speed.addEventListener('input', function(){ updateSpeedLabel(); var m = (BLS.loadState().speedMultiplier||1); applyState({speed:parseInt(speed.value,10)*m}, true); publishState() });
   size.addEventListener('input', function(){ updateSizeLabel(); applyState({size:parseInt(size.value,10)}, true); });
   yPercent.addEventListener('input', function(){ updateYPercentLabel(); applyState({yPercent:parseInt(yPercent.value,10)}, true); });
   yReset.addEventListener('click', function(){ yPercent.value=50; updateYPercentLabel(); applyState({yPercent:50}, true); });
-  glowEnable.addEventListener('change', function(){ applyState({glowEnabled: glowEnable.checked}, true) });
-  glowIntensity.addEventListener('input', function(){ updateGlowIntensityLabel(); var f = parseInt(glowIntensity.value,10)/100; applyState({glowIntensity:f}, true) });
-  glowRate.addEventListener('input', function(){ updateGlowRateLabel(); applyState({glowRate: parseFloat(glowRate.value)}, true) });
-  rampEnable.addEventListener('change', function(){ var st = BLS.loadState(); var next = {rampEnabled: rampEnable.checked}; if(!rampEnable.checked){ next.easingMode = 'linear' } if(st.running && rampEnable.checked){ next.startedAt = Date.now() } applyState(next, true) });
-  rampSeconds.addEventListener('input', function(){ updateRampLabel(); var st = BLS.loadState(); var next = {rampSeconds: parseInt(rampSeconds.value,10)}; if(st.running && st.rampEnabled){ next.startedAt = Date.now() } applyState(next, true) });
-  edgePause.addEventListener('input', function(){ updateEdgePauseLabel(); applyState({edgePauseMs: parseInt(edgePause.value,10)}, true) });
-  wiggleEnable.addEventListener('change', function(){ applyState({wiggleEnabled: wiggleEnable.checked}, true) });
-  wiggleAmplitude.addEventListener('input', function(){ updateWiggleLabel(); applyState({wiggleAmplitude: parseInt(wiggleAmplitude.value,10)}, true) });
+  glowEnable.addEventListener('change', function(){ applyState({glowEnabled: glowEnable.checked}, true); publishState() });
+  glowIntensity.addEventListener('input', function(){ updateGlowIntensityLabel(); var f = parseInt(glowIntensity.value,10)/100; applyState({glowIntensity:f}, true); publishState() });
+  glowRate.addEventListener('input', function(){ updateGlowRateLabel(); applyState({glowRate: parseFloat(glowRate.value)}, true); publishState() });
+  rampEnable.addEventListener('change', function(){ var st = BLS.loadState(); var next = {rampEnabled: rampEnable.checked}; if(!rampEnable.checked){ next.easingMode = 'linear' } if(st.running && rampEnable.checked){ next.startedAt = Date.now() } applyState(next, true); publishState() });
+  rampSeconds.addEventListener('input', function(){ updateRampLabel(); var st = BLS.loadState(); var next = {rampSeconds: parseInt(rampSeconds.value,10)}; if(st.running && st.rampEnabled){ next.startedAt = Date.now() } applyState(next, true); publishState() });
+  edgePause.addEventListener('input', function(){ updateEdgePauseLabel(); applyState({edgePauseMs: parseInt(edgePause.value,10)}, true); publishState() });
+  wiggleEnable.addEventListener('change', function(){ applyState({wiggleEnabled: wiggleEnable.checked}, true); publishState() });
+  wiggleAmplitude.addEventListener('input', function(){ updateWiggleLabel(); applyState({wiggleAmplitude: parseInt(wiggleAmplitude.value,10)}, true); publishState() });
   timerMinutes.addEventListener('input', function(){ updateTimerLabel(); });
   savePresetBtn.addEventListener('click', function(){ var n = (presetName.value||'').trim(); if(!n) return; BLS.savePreset(n, BLS.loadState()); refreshPresetList() })
   applyPresetBtn.addEventListener('click', function(){ var n = presetList.value; if(!n) return; var preset = BLS.loadPreset(n); if(!preset) return; applyState(preset, true); setActive(shapeControls,'shape','shape'); setActive(directionControls,'direction','direction'); setActive(easingControls,'easing','easingMode') })
@@ -136,11 +137,11 @@ shapeControls.addEventListener('click', function(e){ var d = e.target.dataset.sh
   audioSelect.addEventListener('change', function(){ var name = audioSelect.value || null; applyState({audioName:name}, true) });
   audioEnable.addEventListener('change', function(){ applyState({audioEnabled: audioEnable.checked}, true) });
   audioMode.addEventListener('change', function(){ refreshAudioMode(); applyState({audioMode: audioMode.value}, true) });
-  programPreset.addEventListener('change', function(){ applyState({programPreset: programPreset.value}, true) });
-  syncPan.addEventListener('change', function(){ applyState({syncPan: syncPan.checked}, true) });
-  panRate.addEventListener('input', function(){ updatePanRateLabel(); applyState({panRate: parseFloat(panRate.value)}, true) });
-  cueRate.addEventListener('input', function(){ updateCueRateLabel(); applyState({cueRate: parseFloat(cueRate.value)}, true) });
-  volume.addEventListener('input', function(){ updateVolumeLabel(); applyState({volume: parseInt(volume.value,10)/100}, true) });
+  programPreset.addEventListener('change', function(){ applyState({programPreset: programPreset.value}, true); publishState() });
+  syncPan.addEventListener('change', function(){ applyState({syncPan: syncPan.checked}, true); publishState() });
+  panRate.addEventListener('input', function(){ updatePanRateLabel(); applyState({panRate: parseFloat(panRate.value)}, true); publishState() });
+  cueRate.addEventListener('input', function(){ updateCueRateLabel(); applyState({cueRate: parseFloat(cueRate.value)}, true); publishState() });
+  volume.addEventListener('input', function(){ updateVolumeLabel(); applyState({volume: parseInt(volume.value,10)/100}, true); publishState() });
   testSound.addEventListener('click', function(){ try{ var st = BLS.loadState(); if(st.audioMode==='programmatic'){ AudioEngine.setVolume(st.volume||0.6); var pan = 0; if(st.programPreset==='click'){ AudioEngine.playClick(pan) } else if(st.programPreset==='ping'){ AudioEngine.playPing(pan) } else if(st.programPreset==='woodblock'){ AudioEngine.playWoodblock(pan) } else if(st.programPreset==='bell'){ AudioEngine.playBell(pan) } else if(st.programPreset==='bass'){ AudioEngine.playBass(pan) } else if(st.programPreset==='kick'){ AudioEngine.playKick(pan) } else if(st.programPreset==='snare'){ AudioEngine.playSnare(pan) } else if(st.programPreset==='hihat'){ AudioEngine.playHiHat(pan) } else if(st.programPreset==='sweep'){ AudioEngine.playSweep(pan) } else if(st.programPreset==='zap'){ AudioEngine.playZap(pan) } else if(st.programPreset==='bubble'){ AudioEngine.playBubble(pan) } else if(st.programPreset==='pink'){ AudioEngine.startPinkNoisePan(st.panRate||0.5); setTimeout(function(){ AudioEngine.stopNoise() }, 800) } else if(st.programPreset==='hybrid'){ AudioEngine.startHybrid(st.cueRate||1.2); setTimeout(function(){ AudioEngine.stopNoise() }, 1000) } } }catch(e){} });
   knobSens.addEventListener('input', function(){ updateKnobSensLabel() });
   if(clearSessionsBtn){ clearSessionsBtn.addEventListener('click', function(){ var n = (patientName.value||'').trim()||'Unnamed'; var p = getPatient(n); p.sessions = []; p.count = 0; p.last = null; setPatient(p); refreshPatientUI() }) }
@@ -155,8 +156,13 @@ shapeControls.addEventListener('click', function(e){ var d = e.target.dataset.sh
 var tickId = null;
 function startTimer(){ if(tickId) clearInterval(tickId); var durationSec = Math.max(0, (parseInt(timerMinutes.value||'0',10)||0)*60); var startedAt = Date.now(); applyState({running:true, durationSec:durationSec, startedAt:startedAt}, true); statusText.textContent = 'Running'; tickId = setInterval(function(){ var st = BLS.loadState(); if(!st.running){ clearInterval(tickId); tickId=null; return } var elapsed = Math.floor((Date.now()-st.startedAt)/1000); var rem = Math.max(0, st.durationSec - elapsed); var em = Math.floor(elapsed/60), es = elapsed%60; elapsedText.textContent = String(em).padStart(2,'0')+':'+String(es).padStart(2,'0'); var rm = Math.floor(rem/60); timerDisplay.textContent = String(rm).padStart(2,'0')+':'+String(rem%60).padStart(2,'0'); if(rem<=0){ stopTimer() } }, 250); }
 function stopTimer(){ if(tickId){ clearInterval(tickId); tickId=null } recordSession(); applyState({running:false}, true); statusText.textContent = 'Idle'; refreshPatientUI() }
-startBtn.addEventListener('click', startTimer);
-endBtn.addEventListener('click', stopTimer);
+  startBtn.addEventListener('click', function(){ startTimer(); publishState() });
+  endBtn.addEventListener('click', function(){ stopTimer(); publishState() });
+  wsConnectBtn.addEventListener('click', function(){ wsConnect(); updateJoinLink() });
+  wsDisconnectBtn.addEventListener('click', wsDisconnect);
+  wsUrl.addEventListener('input', updateJoinLink);
+  wsSession.addEventListener('input', updateJoinLink);
+  copyJoinLink.addEventListener('click', function(){ if(joinLink.value){ navigator.clipboard && navigator.clipboard.writeText(joinLink.value) } });
   openPatient.addEventListener('click', function(){ window.open('patient.html','bls-patient'); });
   renderer.resize(360,220);
   updateSpeedLabel(); updateSizeLabel(); updateYPercentLabel(); updateTimerLabel(); updateGlowIntensityLabel(); updateGlowRateLabel(); updateRampLabel(); updateEdgePauseLabel(); updateWiggleLabel(); updatePanRateLabel(); updateCueRateLabel(); updateVolumeLabel(); statusText.textContent = state.running? 'Running':'Idle'; setActive(shapeControls,'shape','shape'); setActive(directionControls,'direction','direction'); setActive(easingControls,'easing','easingMode');
@@ -179,8 +185,19 @@ endBtn.addEventListener('click', stopTimer);
   updateKnobSensLabel();
   yPercent.value = parseInt(state.yPercent||50,10);
   updateYPercentLabel();
-  refreshPresetList(); refreshPatientList();
+  refreshPresetList(); refreshPatientList(); updateJoinLink();
   refreshPatientUI();
 }
 function waitForBLS(){ if(window.BLS){ initAdmin() } else { setTimeout(waitForBLS, 50) } }
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', waitForBLS) } else { waitForBLS() }
+  var wsUrl = document.getElementById('wsUrl');
+  var wsSession = document.getElementById('wsSession');
+  var wsConnectBtn = document.getElementById('wsConnect');
+  var wsDisconnectBtn = document.getElementById('wsDisconnect');
+  var wsStatus = document.getElementById('wsStatus');
+  var joinLink = document.getElementById('joinLink');
+  var copyJoinLink = document.getElementById('copyJoinLink');
+  var ws = null; var wsConnected = false; var wsSid = null;
+  function updateJoinLink(){ var url = (wsUrl.value||'').trim(); var sid = (wsSession.value||'').trim(); var base = location.origin + '/patient.html'; if(url && sid){ joinLink.value = base + '?url=' + encodeURIComponent(url) + '&sid=' + encodeURIComponent(sid) } else { joinLink.value = '' } }
+  function wsConnect(){ var url = (wsUrl.value||'').trim(); var sid = (wsSession.value||'').trim()||'default'; if(ws){ try{ ws.close() }catch(e){} ws=null } if(!url){ wsStatus.textContent = 'Missing URL'; return } ws = new WebSocket(url); wsSid = sid; wsStatus.textContent = 'Connecting...'; ws.onopen = function(){ wsConnected = true; wsStatus.textContent = 'Connected'; try{ ws.send(JSON.stringify({type:'join', sessionId:sid, role:'admin'})) }catch(e){} }; ws.onclose = function(){ wsConnected = false; wsStatus.textContent = 'Disconnected' }; ws.onerror = function(){ wsStatus.textContent = 'Error' }; ws.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='joined'){ wsStatus.textContent = 'Connected' } }catch(e){} } }
+  function wsDisconnect(){ if(ws){ try{ ws.close() }catch(e){} } ws=null; wsConnected=false; wsStatus.textContent = 'Disconnected' }

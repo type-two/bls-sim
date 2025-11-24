@@ -224,6 +224,23 @@
         <button data-mult="3">3×</button>
         <button data-mult="4">4×</button>
       </div>
+      <div class="panel" style="margin-top:8px">
+        <h2>Network Mode</h2>
+        <div class="row">
+          <label>Server URL:</label>
+          <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8787" style="width:220px">
+          <label>Session ID:</label>
+          <input type="text" id="wsSession" placeholder="room-1" style="width:120px">
+          <button id="wsConnect">Connect</button>
+          <button id="wsDisconnect">Disconnect</button>
+          <span class="small">Status: <span id="wsStatus">Disconnected</span></span>
+        </div>
+        <div class="row">
+          <label>Patient Join Link:</label>
+          <input type="text" id="joinLink" readonly style="flex:1; min-width:260px">
+          <button id="copyJoinLink">Copy</button>
+        </div>
+      </div>
       
       
       <div class="row">
