@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bilataral Stimulation Simulator Admin</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f7f7f7; color: #111; }
+    header { padding: 16px 20px; background: #222; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 18px; margin: 0; }
+    main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px; }
+    .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    .panel h2 { font-size: 14px; margin: 0 0 8px; color: #333; }
+    .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+    .row label { font-size: 13px; color: #333; }
+    .controls button { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer; }
+    .controls button.active { background: #1f6feb; color: #fff; border-color: #1f6feb; box-shadow: 0 0 0 2px rgba(31,111,235,0.4) inset; }
+    #easingControls button.active { background: #1f6feb; color: #fff; border-color: #1f6feb; box-shadow: 0 0 0 2px rgba(31,111,235,0.4) inset; }
+    .controls input[type="range"] { width: 180px; }
+    .preview { display: flex; align-items: center; justify-content: center; height: 220px; background: #000; border-radius: 8px; overflow: hidden; }
+    .preview { width: 360px; margin: 0 auto; }
+    .previewContainer { justify-content: flex-start; }
+    .previewCanvas { display: block; margin: 0; }
+    .footer { display: flex; gap: 8px; }
+    .footer button { padding: 10px 12px; border: none; border-radius: 6px; cursor: pointer; }
+    .footer .primary { background: #1f6feb; color: #fff; }
+    .footer .danger { background: #b31d1d; color: #fff; }
+    .primary { background: #2da44e; color: #fff; border: none; padding: 12px 18px; border-radius: 8px; font-weight: 600; }
+    .danger { background: #d1242f; color: #fff; border: none; padding: 12px 18px; border-radius: 8px; font-weight: 600; }
+    #patientControls .danger { background: transparent; color: #d1242f; border: 1px solid #d1242f; padding: 6px 10px; border-radius: 6px; font-weight: 500; }
+    .metrics { display: flex; gap: 12px; font-size: 13px; color: #444; }
+    .small { font-size: 12px; color: #666; display: inline-block; min-width: 60px; }
+    .field { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+    .field label { min-width: 90px; }
+    #speed { width: 360px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BILATERAL STIMULATION SIMULATOR</h1>
+    <div>
+      <button id="openPatient">Open Patient View</button>
+    </div>
+  </header>
+  <main>
+    <section class="panel">
+      <h2>Session Controls</h2>
+      <div class="row controls" id="shapeControls">
+        <label>Shape:</label>
+        <button data-shape="circle" class="active">Circle</button>
+        <button data-shape="square">Square</button>
+        <button data-shape="triangle">Triangle</button>
+      </div>
+      <div class="row">
+        <label>Shape Color:</label>
+        <input type="color" id="shapeColor" value="#00ff88">
+        <div id="shapePreset" class="controls">
+          <button data-color="#00ff00" style="background:#00ff00;color:#000">Green</button>
+          <button data-color="#0066ff" style="background:#0066ff;color:#fff">Blue</button>
+          <button data-color="#ffd400" style="background:#ffd400;color:#000">Yellow</button>
+          <button data-color="#ff2a2a" style="background:#ff2a2a;color:#fff">Red</button>
+          <button data-color="#ffffff" style="background:#ffffff;color:#000">White</button>
+        </div>
+      </div>
+      <div class="row">
+        <label>Background:</label>
+        <input type="color" id="bgColor" value="#000000">
+        <div id="bgPreset" class="controls">
+          <button data-color="#00ff00" style="background:#00ff00;color:#000">Green</button>
+          <button data-color="#0066ff" style="background:#0066ff;color:#fff">Blue</button>
+          <button data-color="#ffd400" style="background:#ffd400;color:#000">Yellow</button>
+          <button data-color="#ff2a2a" style="background:#ff2a2a;color:#fff">Red</button>
+          <button data-color="#ffffff" style="background:#ffffff;color:#000">White</button>
+        </div>
+      </div>
+      <div class="row controls" id="directionControls">
+        <label>Direction:</label>
+        <button data-direction="lr" class="active">Left ↔ Right</button>
+        <button data-direction="ud">Up ↕ Down</button>
+        <button data-direction="diag_down">Diagonal ↘︎</button>
+        <button data-direction="diag_up">Diagonal ↗︎</button>
+      </div>
+      <div class="row">
+        <label>Size:</label>
+        <input type="range" id="size" min="10" max="100" step="2" value="28">
+        <span id="sizeLabel" class="small">28 px</span>
+      </div>
+      <div class="row">
+        <label>Vertical Position:</label>
+        <input type="range" id="yPercent" min="0" max="100" step="1" value="50">
+        <span id="yPercentLabel" class="small">50%</span>
+        <button id="yReset">Reset</button>
+      </div>
+      <div class="row">
+        <label>Glow Pulse:</label>
+        <label class="small"><input type="checkbox" id="glowEnable"> Enable</label>
+        <div class="field">
+          <label>Glow Radius:</label>
+          <input type="range" id="glowIntensity" min="0" max="200" step="5" value="100">
+          <span id="glowIntensityLabel" class="small">100%</span>
+        </div>
+        <div class="field">
+          <label>Glow Rate:</label>
+          <input type="range" id="glowRate" min="0.1" max="3" step="0.1" value="0.5">
+          <span id="glowRateLabel" class="small">0.5 Hz</span>
+        </div>
+      </div>
+      <div class="row">
+        <label>Ramp Speed:</label>
+        <label class="small"><input type="checkbox" id="rampEnable"> Enable</label>
+        <input type="range" id="rampSeconds" min="1" max="60" step="1" value="10">
+        <span id="rampLabel" class="small">10 s</span>
+      </div>
+      <div class="row controls" id="easingControls">
+        <label>Smoothness:</label>
+        <button data-easing="linear" class="active">Linear</button>
+        <button data-easing="ease">Ease In-Out</button>
+      </div>
+      <div class="row">
+        <label>Edge Pause:</label>
+        <input type="range" id="edgePause" min="0" max="150" step="10" value="0">
+        <span id="edgePauseLabel" class="small">0 ms</span>
+      </div>
+      <div class="row">
+        <label>Wiggle:</label>
+        <label class="small"><input type="checkbox" id="wiggleEnable"> Enable</label>
+        <input type="range" id="wiggleAmplitude" min="0" max="10" step="1" value="0">
+        <span id="wiggleLabel" class="small">0 px</span>
+      </div>
+      
+      <div class="row" id="presetControls">
+        <label>Presets:</label>
+        <div class="field">
+          <label>Name:</label>
+          <input type="text" id="presetName" placeholder="My Preset" style="width:160px">
+          <button id="savePreset">Save</button>
+        </div>
+        <div class="field">
+          <label>Apply:</label>
+          <select id="presetList"></select>
+          <button id="applyPreset">Apply</button>
+          <button id="deletePreset">Delete</button>
+        </div>
+        <div class="field">
+          <label>Import/Export:</label>
+          <button id="exportPresets">Export JSON</button>
+          <button id="importPresets">Import JSON</button>
+        </div>
+      </div>
+      <div class="row" id="audioControls">
+        <label>Audio:</label>
+        <select id="audioMode">
+          <option value="programmatic">Programmatic</option>
+          <option value="file">From Files</option>
+          <option value="off">Off</option>
+        </select>
+        <label class="small"><input type="checkbox" id="audioEnable"> Enable</label>
+        <button id="testSound">Test Sound</button>
+        <div id="programmaticControls" class="row">
+          <div class="field">
+            <label>Preset:</label>
+          <select id="programPreset">
+            <option value="pink">Pink Noise</option>
+            <option value="hybrid">Hybrid (noise + edge cues)</option>
+            <option value="click">Click</option>
+            <option value="ping">Ping</option>
+            <option value="woodblock">Woodblock</option>
+            <option value="bell">Bell</option>
+            <option value="bass">Bass</option>
+            <option value="kick">Kick</option>
+            <option value="snare">Snare</option>
+            <option value="hihat">Hi-Hat</option>
+            <option value="sweep">Sweep</option>
+            <option value="zap">Zap</option>
+            <option value="bubble">Bubble</option>
+          </select>
+          </div>
+          <label class="small"><input type="checkbox" id="syncPan" checked> Pan sync to movement</label>
+          <div class="field">
+            <label>Pan Rate:</label>
+            <input type="range" id="panRate" min="0.1" max="2" step="0.1" value="0.5">
+            <span id="panRateLabel" class="small">0.5 Hz</span>
+          </div>
+          <div class="field">
+            <label>Cue Rate:</label>
+            <input type="range" id="cueRate" min="0.1" max="3" step="0.1" value="1.2">
+            <span id="cueRateLabel" class="small">1.2 Hz</span>
+          </div>
+          <div class="field">
+            <label>Volume:</label>
+            <input type="range" id="volume" min="0" max="100" step="5" value="60">
+            <span id="volumeLabel" class="small">60%</span>
+          </div>
+        </div>
+        <div id="fileControls" class="row">
+          <button id="pickAudioFolder">Choose Folder</button>
+          <select id="audioSelect"><option value="">No audio</option></select>
+        </div>
+      </div>
+      <div class="row" id="deviceControls">
+        <label>Controller:</label>
+        <button id="connectHID">Connect HID Device</button>
+        <span id="deviceStatus" class="small">Not connected</span>
+        <label>Sensitivity:</label>
+        <input type="range" id="knobSens" min="1" max="50" step="1" value="5">
+        <span id="knobSensLabel" class="small">x5</span>
+      </div>
+      
+    </section>
+    <section class="panel">
+      <h2>Preview</h2>
+      <div class="preview previewContainer" id="previewContainer">
+        <canvas class="previewCanvas" id="previewCanvas" width="640" height="360"></canvas>
+      </div>
+      <div class="row">
+        <label>Speed:</label>
+        <input type="range" id="speed" min="50" max="600" step="10" value="250">
+        <span id="speedLabel" class="small">250 px/s</span>
+      </div>
+      <div class="row controls" id="speedBoost">
+        <label>Speed Boost:</label>
+        <button data-mult="1" class="active">1×</button>
+        <button data-mult="2">2×</button>
+        <button data-mult="3">3×</button>
+        <button data-mult="4">4×</button>
+      </div>
+      
+      
+      <div class="row">
+        <label>Timer (minutes):</label>
+        <input type="number" id="timerMinutes" min="0" value="10" style="width:80px">
+        <span id="timerDisplay" class="small">10:00</span>
+      </div>
+      <div class="row">
+        <button class="primary" id="startSession">Start Session</button>
+        <button class="danger" id="endSession">End Session</button>
+      </div>
+      <div class="metrics">
+        <div>Status: <span id="statusText">Idle</span></div>
+        <div>Elapsed: <span id="elapsedText">00:00</span></div>
+      </div>
+      <div class="row" id="patientControls">
+        <label>Patient:</label>
+        <input type="text" id="patientName" placeholder="Patient Name" style="width:180px">
+        <button id="savePatient">Save Patient</button>
+        <select id="patientList" style="min-width:160px"></select>
+        <button id="loadPatient">Load Patient</button>
+        <button id="clearSessions">Clear Sessions</button>
+        <button id="deletePatient" class="danger">Delete Patient</button>
+        <span class="small">Sessions: <span id="sessionCount">0</span></span>
+        <span class="small">Last: <span id="lastSessionInfo">—</span></span>
+      </div>
+      <div class="row" id="patientHistory">
+        <label>Session History:</label>
+        <div id="sessionHistory" class="small" style="max-height:160px; overflow:auto; flex:1"></div>
+      </div>
+      <div class="small">This preview mirrors the patient's view.</div>
+    </section>
+  </main>
+
+  <script src="js/bls.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

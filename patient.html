@@ -1,0 +1,52 @@
+BLS<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLS Patient View</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { background: #000; display: flex; align-items: center; justify-content: center; }
+    #canvas { display: block; }
+    #overlay { position: fixed; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: #fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; opacity: 0.8; }
+    #overlay button { padding: 8px 10px; border: none; border-radius: 6px; background: #1f6feb; color: #fff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script src="js/bls.js"></script>
+  <script src="js/audio.js"></script>
+  <script>
+    function initPatient(){
+      var canvas = document.getElementById('canvas')
+      function size(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+      size(); window.addEventListener('resize', size)
+      var renderer = BLS.Renderer(canvas)
+      var chan = BLS.createChannel('bls-session')
+      chan.on(function(msg){ if(!msg || typeof msg !== 'object') return; var apply = Object.assign({}, msg); if(apply && apply.rampEnabled === false){ apply.easingMode = 'linear' } if(apply && apply.glowEnabled === false){ apply.glowIntensity = 0 } renderer.setState(apply); var st = renderer.getState(); if(st.running){ renderer.start() } else { renderer.stop() } })
+      renderer.setState(BLS.loadState())
+      var st = renderer.getState(); if(st.running){ renderer.start() }
+      var audioCtx = null, panner = null, gain = null, source = null, audioFolder = null, audioBuffer = null
+      var audioUnlocked = false
+      var pendingProgramState = null
+      function bindUnlock(){ ['pointerdown','keydown','touchstart','mousemove'].forEach(function(ev){ window.addEventListener(ev, function once(){ try{ AudioEngine.ensureCtx(); audioUnlocked = true }catch(e){} if(pendingProgramState){ var st = pendingProgramState; pendingProgramState = null; startProgrammatic(st) } try{ window.removeEventListener(ev, once) }catch(_){ } }, { once:true }) }) }
+      bindUnlock()
+      var progRunning = false
+      function stopProgrammatic(){ AudioEngine.stopNoise(); progRunning=false }
+      function startProgrammatic(st){ if(!audioUnlocked){ pendingProgramState = st; bindUnlock(); return } AudioEngine.setVolume(st.volume||0.6); if(st.programPreset==='pink'){ if(st.syncPan){ renderer.setOnUpdate(function(info){ var pan=(info.x/info.w)*2-1; }); AudioEngine.startPinkNoisePan(Math.max(0.1, st.panRate||0.5)) } else { AudioEngine.startPinkNoisePan(Math.max(0.1, st.panRate||0.5)) } progRunning=true } else if(st.programPreset==='hybrid'){ AudioEngine.startHybrid(Math.max(0.1, st.cueRate||1.2)); progRunning=true } else { renderer.setOnUpdate(function(info){ var r = renderer.getState().size; var hitL = info.x<=r+0.1; var hitR = info.x>=info.w-r-0.1; var hitT = info.y<=r+0.1; var hitB = info.y>=info.h-r-0.1; if(hitL||hitR||hitT||hitB){ var pan = hitL? -1 : hitR? 1 : 0; var pre = st.programPreset; if(pre==='click'){ AudioEngine.playClick(pan) } else if(pre==='ping'){ AudioEngine.playPing(pan) } else if(pre==='woodblock'){ AudioEngine.playWoodblock(pan) } else if(pre==='bell'){ AudioEngine.playBell(pan) } else if(pre==='bass'){ AudioEngine.playBass(pan) } else if(pre==='kick'){ AudioEngine.playKick(pan) } else if(pre==='snare'){ AudioEngine.playSnare(pan) } else if(pre==='hihat'){ AudioEngine.playHiHat(pan) } else if(pre==='sweep'){ AudioEngine.playSweep(pan) } else if(pre==='zap'){ AudioEngine.playZap(pan) } else if(pre==='bubble'){ AudioEngine.playBubble(pan) } else { AudioEngine.playWoodblock(pan) } } }); progRunning=true } }
+      function ensureAudio(){ if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null; gain = audioCtx.createGain(); if(panner){ panner.connect(gain) } gain.connect(audioCtx.destination) } if(audioCtx.state==='suspended'){ audioCtx.resume() } }
+      async function chooseAudioFolder(){ ensureAudio(); if(window.showDirectoryPicker){ try{ audioFolder = await window.showDirectoryPicker(); var st0 = BLS.loadState(); if(st0.audioEnabled && st0.audioName){ await loadAudioByName(st0.audioName); if(st0.running) playBuffer() } }catch(e){ return } } else { var input = document.createElement('input'); input.type='file'; input.webkitdirectory=true; input.multiple=true; input.addEventListener('change', function(){ var st0 = BLS.loadState(); var files = Array.from(input.files); var match = files.find(function(f){ return f.name === st0.audioName }); if(match){ var fr = new FileReader(); fr.onload = function(){ audioCtx.decodeAudioData(fr.result).then(function(buf){ audioBuffer = buf; if(st0.running && st0.audioEnabled) playBuffer() }) }; fr.readAsArrayBuffer(match) } }); input.click(); }
+      }
+      async function loadAudioByName(name){ if(!name) return; ensureAudio(); if(!audioFolder) return; try{ let handle = null; for await (const [n,h] of audioFolder.entries()){ if(h.kind==='file' && n===name){ handle=h; break } } if(!handle) return; var file = await handle.getFile(); var buf = await file.arrayBuffer(); audioBuffer = await audioCtx.decodeAudioData(buf); }catch(e){} }
+      function playBuffer(){ if(!audioBuffer || !audioCtx) return; if(source){ try{ source.stop() }catch(e){} source.disconnect() } source = audioCtx.createBufferSource(); source.buffer = audioBuffer; source.loop = true; var nodeChainStart = source; if(panner){ nodeChainStart.connect(panner) } else { nodeChainStart.connect(gain) } source.start() }
+      function stopAudio(){ if(source){ try{ source.stop() }catch(e){} source.disconnect(); source=null } }
+      async function ensureFolder(){ if(!audioFolder){ try{ await chooseAudioFolder() }catch(e){} } }
+      renderer.setOnUpdate(function(info){ if(panner){ var pan = (info.x / info.w) * 2 - 1; if(pan < -1) pan=-1; if(pan>1) pan=1; try{ panner.pan.value = pan }catch(e){} } })
+      chan.on(async function(msg){ if(!msg || typeof msg!=='object') return; if(!msg.running){ stopAudio(); stopProgrammatic(); return } if(msg.audioEnabled){ if(msg.audioMode==='file'){ if(!audioFolder){ await ensureFolder() } if(msg.audioName){ await loadAudioByName(msg.audioName); playBuffer() } } else { stopAudio(); if(!audioUnlocked) bindUnlock(); startProgrammatic(msg) } } else { stopAudio(); stopProgrammatic() } })
+    }
+    function wait(){ if(window.BLS){ initPatient() } else { setTimeout(wait, 50) } }
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', wait) } else { wait() }
+  </script>
+</body>
+</html>
