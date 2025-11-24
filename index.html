@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bilataral Stimulation Simulator Admin</title>
-  <style>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bilataral Stimulation Simulator Admin</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%231f6feb'/%3E%3C/svg%3E">
+    <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f7f7f7; color: #111; }
     header { padding: 16px 20px; background: #222; color: #fff; display: flex; align-items: center; justify-content: space-between; }
     header h1 { font-size: 18px; margin: 0; }
@@ -30,6 +31,8 @@
     #patientControls .danger { background: transparent; color: #d1242f; border: 1px solid #d1242f; padding: 6px 10px; border-radius: 6px; font-weight: 500; }
     .metrics { display: flex; gap: 12px; font-size: 13px; color: #444; }
     .small { font-size: 12px; color: #666; display: inline-block; min-width: 60px; }
+    .statusDot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#d1242f; margin-right:6px; vertical-align:middle; }
+    .statusDot.on { background:#2da44e; }
     .field { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
     .field label { min-width: 90px; }
     #speed { width: 360px; }
@@ -224,23 +227,7 @@
         <button data-mult="3">3×</button>
         <button data-mult="4">4×</button>
       </div>
-      <div class="panel" style="margin-top:8px">
-        <h2>Network Mode</h2>
-        <div class="row">
-          <label>Server URL:</label>
-          <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8787" style="width:220px">
-          <label>Session ID:</label>
-          <input type="text" id="wsSession" placeholder="room-1" style="width:120px">
-          <button id="wsConnect">Connect</button>
-          <button id="wsDisconnect">Disconnect</button>
-          <span class="small">Status: <span id="wsStatus">Disconnected</span></span>
-        </div>
-        <div class="row">
-          <label>Patient Join Link:</label>
-          <input type="text" id="joinLink" readonly style="flex:1; min-width:260px">
-          <button id="copyJoinLink">Copy</button>
-        </div>
-      </div>
+      
       
       
       <div class="row">
@@ -272,6 +259,31 @@
         <div id="sessionHistory" class="small" style="max-height:160px; overflow:auto; flex:1"></div>
       </div>
       <div class="small">This preview mirrors the patient's view.</div>
+      <div class="panel" style="margin-top:8px">
+        <h2>Network</h2>
+        <div class="row">
+          <label>Relay:</label>
+          <span id="relayStatusDot" class="statusDot"></span>
+          <span id="relayStatusText" class="small">Not running</span>
+          <button id="startRelayBtn">Copy Start Command</button>
+          <button id="stopRelayBtn">Stop Server</button>
+        </div>
+        <div class="row">
+          <label>Step 3:</label>
+          <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8787" style="width:220px">
+          <input type="text" id="wsSession" placeholder="room-1" style="width:120px">
+          <button id="detectIP">Detect Local IP</button>
+          <button id="wsConnect">Connect</button>
+          <button id="wsDisconnect">Disconnect</button>
+          <span class="small">Status: <span id="wsStatus">Disconnected</span></span>
+        </div>
+        <div class="row">
+          <label>Step 4:</label>
+          <input type="text" id="joinLink" readonly style="flex:1; min-width:260px">
+          <button id="copyJoinLink">Copy</button>
+        </div>
+        <div id="osHelp" class="small" style="margin-top:6px"></div>
+      </div>
     </section>
   </main>
 

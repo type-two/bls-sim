@@ -25,11 +25,34 @@ BLS<!doctype html>
       var renderer = BLS.Renderer(canvas)
       var chan = BLS.createChannel('bls-session')
       var qs = new URLSearchParams(location.search)
-      var wsUrl = qs.get('url')
-      var wsSid = qs.get('sid') || 'default'
+      var hashSid = (location.hash||'').replace('#','')
+      var wsSid = qs.get('sid') || hashSid || 'default'
+      var wsUrl = qs.get('url') || ('ws://' + (location.hostname||'localhost') + ':8787')
       var ws = null
       chan.on(function(msg){ if(!msg || typeof msg !== 'object') return; var apply = Object.assign({}, msg); if(apply && apply.rampEnabled === false){ apply.easingMode = 'linear' } if(apply && apply.glowEnabled === false){ apply.glowIntensity = 0 } renderer.setState(apply); var st = renderer.getState(); if(st.running){ renderer.start() } else { renderer.stop() } })
-      function wsConnect(){ if(!wsUrl) return; try{ ws = new WebSocket(wsUrl) }catch(e){ return } ws.onopen = function(){ try{ ws.send(JSON.stringify({type:'join', sessionId: wsSid, role:'patient'})) }catch(e){} }; ws.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='state'){ var apply = Object.assign({}, msg.payload||{}); if(apply && apply.rampEnabled === false){ apply.easingMode = 'linear' } if(apply && apply.glowEnabled === false){ apply.glowIntensity = 0 } renderer.setState(apply); var st = renderer.getState(); if(st.running){ renderer.start() } else { renderer.stop() } } }catch(e){} }; ws.onclose = function(){ ws = null }
+      function wsConnect(){ if(!wsUrl) return; try{ ws = new WebSocket(wsUrl) }catch(e){ return } ws.onopen = function(){ try{ ws.send(JSON.stringify({type:'join', sessionId: wsSid, role:'patient'})) }catch(e){} };
+      ws.onmessage = function(ev){
+        try{
+          var msg = JSON.parse(ev.data);
+          if(msg && msg.type==='state'){
+            var apply = Object.assign({}, msg.payload||{});
+            if(apply && apply.rampEnabled === false){ apply.easingMode = 'linear' }
+            if(apply && apply.glowEnabled === false){ apply.glowIntensity = 0 }
+            renderer.setState(apply);
+            var st = renderer.getState();
+            if(!st.running){ stopAudio(); stopProgrammatic(); renderer.stop(); return }
+            if(st.audioEnabled){
+              if(st.audioMode==='file'){
+                (async function(){ if(!audioFolder){ await ensureFolder() } if(st.audioName){ await loadAudioByName(st.audioName); playBuffer() } })()
+              } else {
+                stopAudio(); if(!audioUnlocked) bindUnlock(); startProgrammatic(st)
+              }
+            } else { stopAudio(); stopProgrammatic() }
+            renderer.start()
+          }
+        }catch(e){}
+      };
+      ws.onclose = function(){ ws = null }
       }
       if(wsUrl){ wsConnect() }
       renderer.setState(BLS.loadState())
@@ -37,7 +60,7 @@ BLS<!doctype html>
       var audioCtx = null, panner = null, gain = null, source = null, audioFolder = null, audioBuffer = null
       var audioUnlocked = false
       var pendingProgramState = null
-      function bindUnlock(){ ['pointerdown','keydown','touchstart','mousemove'].forEach(function(ev){ window.addEventListener(ev, function once(){ try{ AudioEngine.ensureCtx(); audioUnlocked = true }catch(e){} if(pendingProgramState){ var st = pendingProgramState; pendingProgramState = null; startProgrammatic(st) } try{ window.removeEventListener(ev, once) }catch(_){ } }, { once:true }) }) }
+      function bindUnlock(){ ['pointerdown','keydown','touchstart','mousemove'].forEach(function(ev){ window.addEventListener(ev, function once(){ try{ AudioEngine.ensureCtx(); audioUnlocked = true; AudioEngine.playPing(0) }catch(e){} if(pendingProgramState){ var st = pendingProgramState; pendingProgramState = null; startProgrammatic(st) } try{ window.removeEventListener(ev, once) }catch(_){ } }, { once:true }) }) }
       bindUnlock()
       var progRunning = false
       function stopProgrammatic(){ AudioEngine.stopNoise(); progRunning=false }

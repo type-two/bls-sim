@@ -1,6 +1,63 @@
 # Bilateral Stimulation Simulator
 
-Simple browser-based tool with an Admin panel and a full-screen Patient view. The Admin controls everything; the Patient view mirrors motion and audio.
+Simple browser-based tool with an therapist panel and a full-screen Patient view. The therapist controls everything; the Patient view mirrors motion and audio.
+
+## How It Works
+
+- Two pages:
+  - Therapist (Admin) page: where you set motion, colors, and sounds
+  - Patient page: fullscreen view that mirrors the Admin
+- Two ways to show the Patient page:
+  - Same computer (extended monitor): plug a second display facing the patient, open the Patient page on that display, go fullscreen — no network setup needed
+  - Two computers on the same Wi‑Fi/LAN: start a tiny local server on the therapist’s computer so both can communicate, then the patient joins from their computer
+- Audio note: most browsers need you to click on the page once to activate sound
+- Go gently — adjust speed, colors, and sounds to what feels comfortable; pause whenever needed
+
+## Super Simple Guide
+
+### Windows
+- First‑Time Setup
+  - Double‑click `setup.bat`
+  - Allow the Windows Defender Firewall prompt (Private networks)
+  - Your browser opens at `http://<your‑IP>:8000/`; “Relay” turns green
+- Every Session
+  - Double‑click `start-relay.bat`
+  - Click “Detect Local IP” in the app; the Patient link auto‑copies
+- Stop Server
+  - Use “Stop Server” in the app, or press `Ctrl + C` in the relay window
+
+### macOS
+- First‑Time Setup
+  - Press `Cmd + Space` → type `Terminal` → press `Enter`
+  - `cd` into the folder where you unzipped the app
+  - Copy and paste: `chmod +x ./setup.sh && ./setup.sh`
+  - Allow the macOS firewall prompt (Private networks)
+  - Your browser opens at `http://<your‑IP>:8000/`; “Relay” turns green
+- Every Session
+  - Press `Cmd + Space` → type `Terminal` → `Enter`
+  - `cd` into the app folder
+  - Copy and paste: `chmod +x ./start-relay.sh && ./start-relay.sh`
+  - Click “Detect Local IP”; the Patient link auto‑copies
+- Stop Server
+  - Use “Stop Server” in the app, or press `Ctrl + C` in the relay Terminal
+
+### Linux
+- First‑Time Setup
+  - Press `Ctrl + Alt + T` to open Terminal
+  - `cd` into the app folder
+  - Copy and paste: `chmod +x ./setup.sh && ./setup.sh`
+  - Your browser opens at `http://<your‑IP>:8000/`; “Relay” turns green
+- Every Session
+  - Open Terminal → `cd` into the app folder
+  - Copy and paste: `chmod +x ./start-relay.sh && ./start-relay.sh`
+  - Click “Detect Local IP”; the Patient link auto‑copies
+- Stop Server
+  - Use “Stop Server” in the app, or press `Ctrl + C` in the relay Terminal
+
+### What You Should See
+- “Relay:” shows a green dot and “Running”
+- “Detect Local IP” fills `ws://<your‑IP>:8787` and copies the Patient link
+- Admin page loads at `http://<your‑IP>:8000/`
 
 ## Admin Options
 
@@ -94,23 +151,48 @@ Simple browser-based tool with an Admin panel and a full-screen Patient view. Th
 - Admin connects to the relay with a Session ID and copies the Patient Join Link.
 - Patient opens the link on their computer and performs a quick gesture to unlock audio.
 
+### Quick Start (Double‑Click or Copy‑Paste)
+- macOS (double‑click): open the folder and double‑click `start-relay.command`.
+- macOS (copy‑paste): `chmod +x ./start-relay.sh && ./start-relay.sh`
+- Windows (double‑click): open the folder and double‑click `start-relay.bat`.
+- Windows (copy‑paste): `start-relay.bat`
+- These start scripts auto‑create a local Python virtual environment, install `websockets`, print your LAN relay URL, and run the relay on port `8787`.
+
+### First‑Time Setup (Recommended)
+- macOS/Linux:
+  - `chmod +x ./setup.sh && ./setup.sh`
+- Windows:
+  - Double‑click `setup.bat`
+- What it does:
+  - Creates a local virtual environment and installs `websockets`
+  - Starts the static site server on `http://<IP>:8000/`
+  - Starts the WebSocket relay on `ws://<IP>:8787`
+  - Opens the Admin page in your browser at `http://<IP>:8000/`
+
+### Every Session (Start/Stop)
+- Start Server:
+  - macOS/Linux: `chmod +x ./start-relay.sh && ./start-relay.sh`
+  - Windows: `start-relay.bat`
+- Stop Server:
+  - Use the Admin page “Stop Server” button, or press `Ctrl + C` in the relay terminal
+
 ### One‑Time Install (WebSocket Relay)
 - Windows:
   - Press `Windows` key → type `PowerShell` → `Enter`
   - Check Python: `python --version` (or `py --version`)
-  - Install package: `python -m pip install websockets` (or `py -m pip install websockets`)
-  - Start relay: `python server.py` (or `py server.py`)
+  - Quick option: double‑click `start-relay.bat` (or run it in PowerShell/CMD)
+  - Manual option: `python -m pip install websockets` (or `py -m pip install websockets`), then `python server.py` (or `py server.py`)
   - If prompted by Windows Defender Firewall, click “Allow access”.
 - macOS:
   - Press `Cmd+Space` → type `Terminal` → `Enter`
   - Check Python: `python3 --version`
-  - Install package: `python3 -m pip install websockets`
-  - Start relay: `python3 server.py`
+  - Quick option: double‑click `start-relay.command` (or run `chmod +x ./start-relay.sh && ./start-relay.sh`)
+  - Manual option: `python3 -m pip install websockets`, then `python3 server.py`
 - Linux (Ubuntu/Debian/Fedora etc.):
   - Press `Ctrl+Alt+T` to open Terminal
   - Check Python: `python3 --version`
-  - Install package: `python3 -m pip install websockets`
-  - Start relay: `python3 server.py`
+  - Quick option: `chmod +x ./start-relay.sh && ./start-relay.sh`
+  - Manual option: `python3 -m pip install websockets`, then `python3 server.py`
 
 ### Find Your Therapist Computer’s IP Address
 - Windows: run `ipconfig` → use the `IPv4 Address` on your active adapter (e.g., `192.168.1.5`).
@@ -135,6 +217,20 @@ Simple browser-based tool with an Admin panel and a full-screen Patient view. Th
 - On Windows, allow the relay through the firewall when prompted.
 - You can disconnect Network Mode and continue Local Mode at any time.
 
+## Display Options
+
+- Same Computer (Extended Display)
+  - Connect a second monitor facing the patient
+  - Open `patient.html` in a second browser window
+  - Drag the Patient window to the patient‑facing monitor and use browser fullscreen
+  - Audio unlock: have the patient do one quick gesture (mouse/key) on the Patient screen
+  - Pros: zero network setup, minimal friction
+
+- Separate Computer (LAN WebSocket)
+  - Use the Network Mode steps above with the Python relay
+  - Share the short Patient link (e.g., `http://<therapist-ip>:8000/patient.html#room-1`)
+  - Audio unlock: one quick gesture on the Patient device; Programmatic audio is recommended
+
 ## Data Storage
 
 - Presets: `localStorage` key `bls_presets`
@@ -147,4 +243,4 @@ Simple browser-based tool with an Admin panel and a full-screen Patient view. Th
 
 ## ⚠️ Disclaimer
 
-This tool is for research, education, and personal experimentation with bilateral stimulation. It is NOT a substitute for professional therapy, diagnosis, or treatment. Use at your own discretion.
+This tool is for research, education, and personal experimentation with bilateral stimulation, or maybe the fancy lightbar broke down and you need a backup option, or maybe you sprained both your index fingers. It is NOT a substitute for professional therapy, diagnosis, or treatment. Use at your own discretion. You can freely copy or share this with blessings. 

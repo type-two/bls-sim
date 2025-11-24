@@ -104,7 +104,13 @@ function updateTimerLabel(){ var m = Math.max(0, parseInt(timerMinutes.value||'0
   function refreshPatientUI(){ var n = (patientName.value||'').trim()||'Unnamed'; var p = getPatient(n); sessionCountEl.textContent = String(p.count||0); if(p.last){ var d = new Date(p.last.end); var dur = Math.round((p.last.durationSec||0)); lastSessionInfoEl.textContent = d.toLocaleString()+' • '+dur+'s' } else { lastSessionInfoEl.textContent = '—' } var host = document.getElementById('sessionHistory'); if(host){ if(!p.sessions || !p.sessions.length){ host.innerHTML = '<em>No sessions yet</em>' } else { var rows = p.sessions.slice().sort(function(a,b){ return a.start - b.start }).map(function(s, idx){ var start = new Date(s.start).toLocaleString(); var end = new Date(s.end).toLocaleString(); var dur = Math.round(s.durationSec||0); return '<div>'+String(idx+1)+'. '+start+' → '+end+' • '+dur+'s</div>' }); host.innerHTML = rows.join('') } } }
   function recordSession(){ var n = (patientName.value||'').trim()||'Unnamed'; var st = BLS.loadState(); if(!st.startedAt) return; var end = Date.now(); var durationSec = Math.floor((end - st.startedAt)/1000); var p = getPatient(n); p.sessions.push({ start: st.startedAt, end: end, durationSec: durationSec }); p.count = (p.count||0)+1; p.last = { start: st.startedAt, end: end, durationSec: durationSec }; setPatient(p); refreshPatientUI() }
   function refreshPresetList(){ var names = BLS.listPresets(); var html=''; for(var i=0;i<names.length;i++){ var n=names[i]; html += '<option value="'+n+'">'+n+'</option>' } presetList.innerHTML = html }
-  function applyState(next, broadcast){ state = BLS.mergeState(state, next||{}); renderer.setState(state); if(state.running){ renderer.start() } else { renderer.stop() } if(broadcast){ chan.send(state) } }
+  function applyState(next, broadcast){
+    state = BLS.mergeState(state, next||{});
+    renderer.setState(state);
+    if(state.running){ renderer.start() } else { renderer.stop() }
+    if(broadcast){ chan.send(state) }
+    publishState()
+  }
   function publishState(){ try{ if(wsConnected && ws){ ws.send(JSON.stringify({type:'state', sessionId: wsSid||'default', payload: BLS.loadState()})) } }catch(e){} }
 shapeControls.addEventListener('click', function(e){ var d = e.target.dataset.shape; if(!d) return; applyState({shape:d}, true); setActive(shapeControls,'shape','shape'); });
   directionControls.addEventListener('click', function(e){ var d = e.target.dataset.direction; if(!d) return; applyState({direction:d}, true); setActive(directionControls,'direction','direction'); });
@@ -162,7 +168,63 @@ function stopTimer(){ if(tickId){ clearInterval(tickId); tickId=null } recordSes
   wsDisconnectBtn.addEventListener('click', wsDisconnect);
   wsUrl.addEventListener('input', updateJoinLink);
   wsSession.addEventListener('input', updateJoinLink);
-  copyJoinLink.addEventListener('click', function(){ if(joinLink.value){ navigator.clipboard && navigator.clipboard.writeText(joinLink.value) } });
+  function copyText(t, fallbackElem){
+    var ok=false;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      try{ navigator.clipboard.writeText(t); ok=true }catch(e){}
+    }
+    if(!ok && fallbackElem){
+      try{ fallbackElem.focus(); fallbackElem.select(); ok=document.execCommand('copy') }catch(e){}
+    }
+    if(!ok){
+      var ta=document.createElement('textarea');
+      ta.value=t; ta.setAttribute('readonly','');
+      ta.style.position='fixed'; ta.style.bottom='0'; ta.style.left='0'; ta.style.opacity='0.01';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ ok=document.execCommand('copy') }catch(e){}
+      document.body.removeChild(ta)
+    }
+    if(!ok){ try{ alert(t) }catch(_){ } }
+    return ok
+  }
+  copyJoinLink.addEventListener('click', function(){ var v = joinLink.value||''; if(!v) return; var b=this; var ok=copyText(v, joinLink); var old=b.textContent; b.textContent = ok ? 'Copied!' : 'Shown'; setTimeout(function(){ b.textContent=old }, 1000) });
+  var detectIPBtn = document.getElementById('detectIP');
+  if(detectIPBtn){ detectIPBtn.addEventListener('click', function(){
+    function setUrl(ip){ if(!ip) return; wsUrl.value = 'ws://' + ip + ':8787'; if(!(wsSession.value||'').trim()){ wsSession.value = 'room-1' } updateJoinLink(); var v = joinLink.value||''; if(v){ var ok = copyText(v, joinLink); var b = document.getElementById('copyJoinLink'); if(b){ var old=b.textContent; b.textContent = ok? 'Copied!' : 'Copy'; setTimeout(function(){ b.textContent=old }, 1000) } } }
+    var host = location.hostname; if(host && host !== 'localhost' && host !== '127.0.0.1'){ setUrl(host); return }
+    // Attempt server-assisted detection
+    (function(){
+      var probeUrl = 'ws://' + (host || 'localhost') + ':8787'
+      try{
+        var temp = new WebSocket(probeUrl)
+        temp.onopen = function(){ try{ temp.send(JSON.stringify({type:'detect_ip'})) }catch(e){} }
+        temp.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='detect_ip' && msg.ip){ setUrl(msg.ip); wsStatus.textContent = 'IP detected'; try{ temp.close() }catch(e){} return } }catch(e){} try{ temp.close() }catch(e){}
+          // Fallback to WebRTC if server didn't respond with IP
+          tryWebRTC()
+        }
+        temp.onerror = function(){ tryWebRTC() }
+      }catch(_){ tryWebRTC() }
+    })()
+    function tryWebRTC(){
+      var RTC = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection
+      if(!RTC){ wsStatus.textContent = 'Detect unavailable'; return }
+      try{
+        var pc = new RTC({iceServers: []}); pc.createDataChannel('x');
+        pc.onicecandidate = function(e){
+          if(!e || !e.candidate){ pc.close(); return }
+          var cand = e.candidate;
+          var ip = (cand && cand.address) || null;
+          if(!ip){
+            var s = cand.candidate || '';
+            var m = s.match(/(?:\s|\b)(\d{1,3}(?:\.\d{1,3}){3})(?:\b)/);
+            if(m) ip = m[1]
+          }
+          if(ip && /^\d+\.\d+\.\d+\.\d+$/.test(ip) && !/^169\./.test(ip)){ setUrl(ip); wsStatus.textContent = 'IP detected'; pc.close() }
+        };
+        pc.createOffer().then(function(o){ return pc.setLocalDescription(o) }).catch(function(){ wsStatus.textContent = 'Detect failed' })
+      }catch(_){ wsStatus.textContent = 'Detect failed' }
+    }
+  }) }
   openPatient.addEventListener('click', function(){ window.open('patient.html','bls-patient'); });
   renderer.resize(360,220);
   updateSpeedLabel(); updateSizeLabel(); updateYPercentLabel(); updateTimerLabel(); updateGlowIntensityLabel(); updateGlowRateLabel(); updateRampLabel(); updateEdgePauseLabel(); updateWiggleLabel(); updatePanRateLabel(); updateCueRateLabel(); updateVolumeLabel(); statusText.textContent = state.running? 'Running':'Idle'; setActive(shapeControls,'shape','shape'); setActive(directionControls,'direction','direction'); setActive(easingControls,'easing','easingMode');
@@ -197,7 +259,31 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
   var wsStatus = document.getElementById('wsStatus');
   var joinLink = document.getElementById('joinLink');
   var copyJoinLink = document.getElementById('copyJoinLink');
+  var startRelayBtn = document.getElementById('startRelayBtn');
+  var stopRelayBtn = document.getElementById('stopRelayBtn');
+  var relayStatusDot = document.getElementById('relayStatusDot');
+  var relayStatusText = document.getElementById('relayStatusText');
   var ws = null; var wsConnected = false; var wsSid = null;
-  function updateJoinLink(){ var url = (wsUrl.value||'').trim(); var sid = (wsSession.value||'').trim(); var base = location.origin + '/patient.html'; if(url && sid){ joinLink.value = base + '?url=' + encodeURIComponent(url) + '&sid=' + encodeURIComponent(sid) } else { joinLink.value = '' } }
-  function wsConnect(){ var url = (wsUrl.value||'').trim(); var sid = (wsSession.value||'').trim()||'default'; if(ws){ try{ ws.close() }catch(e){} ws=null } if(!url){ wsStatus.textContent = 'Missing URL'; return } ws = new WebSocket(url); wsSid = sid; wsStatus.textContent = 'Connecting...'; ws.onopen = function(){ wsConnected = true; wsStatus.textContent = 'Connected'; try{ ws.send(JSON.stringify({type:'join', sessionId:sid, role:'admin'})) }catch(e){} }; ws.onclose = function(){ wsConnected = false; wsStatus.textContent = 'Disconnected' }; ws.onerror = function(){ wsStatus.textContent = 'Error' }; ws.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='joined'){ wsStatus.textContent = 'Connected' } }catch(e){} } }
+  function publishState(){ try{ if(wsConnected && ws){ ws.send(JSON.stringify({type:'state', sessionId: wsSid||'default', payload: BLS.loadState()})) } }catch(e){} }
+  function updateJoinLink(){ var sid = (wsSession.value||'').trim(); var base = location.origin + '/patient.html'; if(sid){ joinLink.value = base + '#' + encodeURIComponent(sid) } else { joinLink.value = '' } }
+  function renderOsHelp(){ var ua = navigator.userAgent||''; var isWin = /Windows/i.test(ua); var isMac = /Macintosh|Mac OS/i.test(ua); var isLinux = /Linux/i.test(ua) && !isWin && !isMac; var setup = (isWin? 'setup.bat' : 'chmod +x ./setup.sh && ./setup.sh'); var start = (isWin? 'start-relay.bat' : 'chmod +x ./start-relay.sh && ./start-relay.sh'); var open = (isWin? 'Open PowerShell' : isMac? 'Cmd+Space → Terminal' : 'Open Terminal'); return { setup: setup, start: start, open: open } }
+  (function(){ var el = document.getElementById('osHelp'); if(!el) return; var h = renderOsHelp(); var text = 'First time: ' + h.open + ', cd to the folder, run: ' + h.setup + ' • Every session: ' + h.start; el.innerText = text })();
+  function copyText(t){ var ok=false; if(navigator.clipboard && navigator.clipboard.writeText){ try{ navigator.clipboard.writeText(t); ok=true }catch(e){} } if(!ok){ var ta=document.createElement('textarea'); ta.value=t; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.bottom='0'; ta.style.left='0'; ta.style.opacity='0.01'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ ok=document.execCommand('copy') }catch(e){} document.body.removeChild(ta) } if(!ok){ try{ alert(t) }catch(_){ } } return ok }
+  function setRelayStatus(on){ if(relayStatusDot){ relayStatusDot.classList.toggle('on', !!on) } if(relayStatusText){ relayStatusText.textContent = on? 'Running' : 'Not running' } }
+  (function(){ var btn = document.getElementById('wsConnect'); if(btn){ btn.disabled = true } })();
+  (function(){
+    var pollMs = 3000;
+    function schedule(){ setTimeout(run, pollMs) }
+    function run(){ checkRelayOnce().then(function(ok){ setRelayStatus(!!ok); var btn = document.getElementById('wsConnect'); if(btn){ btn.disabled = !ok } pollMs = ok ? 3000 : Math.min(Math.round(pollMs*1.5), 30000); schedule() }).catch(function(){ setRelayStatus(false); var btn = document.getElementById('wsConnect'); if(btn){ btn.disabled = true } pollMs = Math.min(Math.round(pollMs*1.5), 30000); schedule() }) }
+    async function checkRelayOnce(){ var host = location.hostname || 'localhost'; var url = 'ws://' + host + ':8787'; try{ return await new Promise(function(resolve){ var temp = new WebSocket(url); var done=false; var timer = setTimeout(function(){ if(!done){ resolve(false); if(temp && temp.readyState===1){ try{ temp.close() }catch(e){} } } }, 1500);
+        temp.onopen = function(){ try{ temp.send(JSON.stringify({type:'ping'})) }catch(e){} };
+        temp.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='pong'){ done=true; clearTimeout(timer); if(temp && temp.readyState===1){ try{ temp.close() }catch(e){} } resolve(true); return } }catch(e){} resolve(false) };
+        temp.onerror = function(){ resolve(false) };
+        temp.onclose = function(){ if(!done){ resolve(false) } };
+      }) }catch(_){ return false } }
+    run()
+  })();
+  if(startRelayBtn){ startRelayBtn.addEventListener('click', function(){ var h = renderOsHelp(); var ok = copyText(h.start); var old = startRelayBtn.textContent; startRelayBtn.textContent = ok? 'Copied!' : 'Copy Start Command'; setTimeout(function(){ startRelayBtn.textContent = old }, 1200) }) }
+  if(stopRelayBtn){ stopRelayBtn.addEventListener('click', function(){ var host = location.hostname || 'localhost'; var url = 'ws://' + host + ':8787'; try{ var temp = new WebSocket(url); temp.onopen = function(){ try{ temp.send(JSON.stringify({type:'shutdown'})) }catch(e){} }; setTimeout(function(){ setRelayStatus(false) }, 1500) }catch(e){} }) }
+  function wsConnect(){ var url = (wsUrl.value||'').trim(); var sid = (wsSession.value||'').trim()||'default'; var btn = document.getElementById('wsConnect'); if(btn && btn.disabled){ wsStatus.textContent = 'Relay not running'; return } if(ws){ try{ ws.close() }catch(e){} ws=null } if(!url){ wsStatus.textContent = 'Missing URL'; return } try{ ws = new WebSocket(url) }catch(e){ wsStatus.textContent = 'Error'; return } wsSid = sid; wsStatus.textContent = 'Connecting...'; ws.onopen = function(){ wsConnected = true; wsStatus.textContent = 'Connected'; try{ ws.send(JSON.stringify({type:'join', sessionId:sid, role:'admin'})) }catch(e){} publishState() }; ws.onclose = function(){ wsConnected = false; wsStatus.textContent = 'Disconnected' }; ws.onerror = function(){ wsStatus.textContent = 'Error' }; ws.onmessage = function(ev){ try{ var msg = JSON.parse(ev.data); if(msg && msg.type==='joined'){ wsStatus.textContent = 'Connected' } }catch(e){} } }
   function wsDisconnect(){ if(ws){ try{ ws.close() }catch(e){} } ws=null; wsConnected=false; wsStatus.textContent = 'Disconnected' }
