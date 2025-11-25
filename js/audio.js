@@ -443,6 +443,36 @@
       this.panInterval=null; 
       this.noiseNodes.forEach(function(n){ try{ n.disconnect() }catch(e){} }); 
       this.noiseNodes=[] 
+    },
+    playTone: function(opts){
+      var ctx = this.ensureCtx();
+      if(!this.master){ try{ this.master = ctx.createGain(); this.master.connect(ctx.destination) }catch(e){} }
+      var freq = (opts && opts.freq) || 440;
+      var durationMs = (opts && opts.durationMs) || 70;
+      var panVal = (opts && typeof opts.pan==='number') ? opts.pan : 0;
+      var adsr = (opts && opts.adsr) || { attackMs:8, decayMs:80, sustain:0.3, releaseMs:10 };
+      var osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      var gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      var p = makePanner(ctx);
+      if(p.setPan) p.setPan(panVal); else if(p.pan) p.pan.value = panVal;
+      osc.connect(gain);
+      if(p._l){ gain.connect(p._l); gain.connect(p._r) } else { gain.connect(p) }
+      p.connect(this.master);
+      var now = ctx.currentTime;
+      var a = Math.max(0.001, (adsr.attackMs||8)/1000);
+      var d = Math.max(0.001, (adsr.decayMs||80)/1000);
+      var s = Math.max(0, Math.min(1, (adsr.sustain!=null? adsr.sustain:0.3)));
+      var r = Math.max(0.001, (adsr.releaseMs||10)/1000);
+      var dur = Math.max(0.005, (durationMs||70)/1000);
+      gain.gain.linearRampToValueAtTime(1.0, now + a);
+      gain.gain.linearRampToValueAtTime(s, now + a + d);
+      gain.gain.setValueAtTime(s, now + dur);
+      gain.gain.linearRampToValueAtTime(0.0001, now + dur + r);
+      osc.start(now);
+      osc.stop(now + dur + r + 0.01);
     }
   }
   

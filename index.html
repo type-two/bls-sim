@@ -1,294 +1,638 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bilataral Stimulation Simulator Admin</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%231f6feb'/%3E%3C/svg%3E">
-    <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #f7f7f7; color: #111; }
-    header { padding: 16px 20px; background: #222; color: #fff; display: flex; align-items: center; justify-content: space-between; }
-    header h1 { font-size: 18px; margin: 0; }
-    main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px; }
-    .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
-    .panel h2 { font-size: 14px; margin: 0 0 8px; color: #333; }
-    .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
-    .row label { font-size: 13px; color: #333; }
-    .controls button { padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; cursor: pointer; }
-    .controls button.active { background: #1f6feb; color: #fff; border-color: #1f6feb; box-shadow: 0 0 0 2px rgba(31,111,235,0.4) inset; }
-    #easingControls button.active { background: #1f6feb; color: #fff; border-color: #1f6feb; box-shadow: 0 0 0 2px rgba(31,111,235,0.4) inset; }
-    .controls input[type="range"] { width: 180px; }
-    .preview { display: flex; align-items: center; justify-content: center; height: 220px; background: #000; border-radius: 8px; overflow: hidden; }
-    .preview { width: 360px; margin: 0 auto; }
-    .previewContainer { justify-content: flex-start; }
-    .previewCanvas { display: block; margin: 0; }
-    .footer { display: flex; gap: 8px; }
-    .footer button { padding: 10px 12px; border: none; border-radius: 6px; cursor: pointer; }
-    .footer .primary { background: #1f6feb; color: #fff; }
-    .footer .danger { background: #b31d1d; color: #fff; }
-    .primary { background: #2da44e; color: #fff; border: none; padding: 12px 18px; border-radius: 8px; font-weight: 600; }
-    .danger { background: #d1242f; color: #fff; border: none; padding: 12px 18px; border-radius: 8px; font-weight: 600; }
-    #patientControls .danger { background: transparent; color: #d1242f; border: 1px solid #d1242f; padding: 6px 10px; border-radius: 6px; font-weight: 500; }
-    .metrics { display: flex; gap: 12px; font-size: 13px; color: #444; }
-    .small { font-size: 12px; color: #666; display: inline-block; min-width: 60px; }
-    .statusDot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#d1242f; margin-right:6px; vertical-align:middle; }
-    .statusDot.on { background:#2da44e; }
-    .field { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-    .field label { min-width: 90px; }
-    #speed { width: 360px; }
-  </style>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bilateral Stimulation Simulator - Admin</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%231f6feb'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
   <header>
-    <h1>BILATERAL STIMULATION SIMULATOR</h1>
-    <div>
-      <button id="openPatient">Open Patient View</button>
+    <div class="header-content">
+      <h1>Bilateral Stimulation Simulator</h1>
+      <div class="simple-toggle" style="margin:0 auto; display:flex; align-items:center; gap:8px;">
+        <label class="control-label" style="color:inherit;">Simple View</label>
+        <label class="toggle">
+          <input type="checkbox" id="simpleViewEnable">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="header-actions">
+        <button id="openPatient" class="btn-secondary">
+          <span class="btn-icon">👁️</span>
+          Open Patient View
+        </button>
+        
+      </div>
     </div>
   </header>
+
+  <div id="lockBanner" class="lock-banner">
+    <span class="lock-icon">🔒</span>
+    LOCKED • Hold U to unlock
+  </div>
+
   <main>
-    <section class="panel">
-      <h2>Session Controls</h2>
-      <div class="row controls" id="shapeControls">
-        <label>Shape:</label>
-        <button data-shape="circle" class="active">Circle</button>
-        <button data-shape="square">Square</button>
-        <button data-shape="triangle">Triangle</button>
-      </div>
-      <div class="row">
-        <label>Shape Color:</label>
-        <input type="color" id="shapeColor" value="#00ff88">
-        <div id="shapePreset" class="controls">
-          <button data-color="#00ff00" style="background:#00ff00;color:#000">Green</button>
-          <button data-color="#0066ff" style="background:#0066ff;color:#fff">Blue</button>
-          <button data-color="#ffd400" style="background:#ffd400;color:#000">Yellow</button>
-          <button data-color="#ff2a2a" style="background:#ff2a2a;color:#fff">Red</button>
-          <button data-color="#ffffff" style="background:#ffffff;color:#000">White</button>
-        </div>
-      </div>
-      <div class="row">
-        <label>Background:</label>
-        <input type="color" id="bgColor" value="#000000">
-        <div id="bgPreset" class="controls">
-          <button data-color="#00ff00" style="background:#00ff00;color:#000">Green</button>
-          <button data-color="#0066ff" style="background:#0066ff;color:#fff">Blue</button>
-          <button data-color="#ffd400" style="background:#ffd400;color:#000">Yellow</button>
-          <button data-color="#ff2a2a" style="background:#ff2a2a;color:#fff">Red</button>
-          <button data-color="#ffffff" style="background:#ffffff;color:#000">White</button>
-        </div>
-      </div>
-      <div class="row controls" id="directionControls">
-        <label>Direction:</label>
-        <button data-direction="lr" class="active">Left ↔ Right</button>
-        <button data-direction="ud">Up ↕ Down</button>
-        <button data-direction="diag_down">Diagonal ↘︎</button>
-        <button data-direction="diag_up">Diagonal ↗︎</button>
-      </div>
-      <div class="row">
-        <label>Size:</label>
-        <input type="range" id="size" min="10" max="100" step="2" value="28">
-        <span id="sizeLabel" class="small">28 px</span>
-      </div>
-      <div class="row">
-        <label>Vertical Position:</label>
-        <input type="range" id="yPercent" min="0" max="100" step="1" value="50">
-        <span id="yPercentLabel" class="small">50%</span>
-        <button id="yReset">Reset</button>
-      </div>
-      <div class="row">
-        <label>Glow Pulse:</label>
-        <label class="small"><input type="checkbox" id="glowEnable"> Enable</label>
-        <div class="field">
-          <label>Glow Radius:</label>
-          <input type="range" id="glowIntensity" min="0" max="200" step="5" value="100">
-          <span id="glowIntensityLabel" class="small">100%</span>
-        </div>
-        <div class="field">
-          <label>Glow Rate:</label>
-          <input type="range" id="glowRate" min="0.1" max="3" step="0.1" value="0.5">
-          <span id="glowRateLabel" class="small">0.5 Hz</span>
-        </div>
-      </div>
-      <div class="row">
-        <label>Ramp Speed:</label>
-        <label class="small"><input type="checkbox" id="rampEnable"> Enable</label>
-        <input type="range" id="rampSeconds" min="1" max="60" step="1" value="10">
-        <span id="rampLabel" class="small">10 s</span>
-      </div>
-      <div class="row controls" id="easingControls">
-        <label>Smoothness:</label>
-        <button data-easing="linear" class="active">Linear</button>
-        <button data-easing="ease">Ease In-Out</button>
-      </div>
-      <div class="row">
-        <label>Edge Pause:</label>
-        <input type="range" id="edgePause" min="0" max="150" step="10" value="0">
-        <span id="edgePauseLabel" class="small">0 ms</span>
-      </div>
-      <div class="row">
-        <label>Wiggle:</label>
-        <label class="small"><input type="checkbox" id="wiggleEnable"> Enable</label>
-        <input type="range" id="wiggleAmplitude" min="0" max="10" step="1" value="0">
-        <span id="wiggleLabel" class="small">0 px</span>
-      </div>
-      
-      <div class="row" id="presetControls">
-        <label>Presets:</label>
-        <div class="field">
-          <label>Name:</label>
-          <input type="text" id="presetName" placeholder="My Preset" style="width:160px">
-          <button id="savePreset">Save</button>
-        </div>
-        <div class="field">
-          <label>Apply:</label>
-          <select id="presetList"></select>
-          <button id="applyPreset">Apply</button>
-          <button id="deletePreset">Delete</button>
-        </div>
-        <div class="field">
-          <label>Import/Export:</label>
-          <button id="exportPresets">Export JSON</button>
-          <button id="importPresets">Import JSON</button>
-        </div>
-      </div>
-      <div class="row" id="audioControls">
-        <label>Audio:</label>
-        <select id="audioMode">
-          <option value="programmatic">Programmatic</option>
-          <option value="file">From Files</option>
-          <option value="off">Off</option>
-        </select>
-        <label class="small"><input type="checkbox" id="audioEnable"> Enable</label>
-        <button id="testSound">Test Sound</button>
-        <div id="programmaticControls" class="row">
-          <div class="field">
-            <label>Preset:</label>
-          <select id="programPreset">
-            <option value="pink">Pink Noise</option>
-            <option value="hybrid">Hybrid (noise + edge cues)</option>
-            <option value="click">Click</option>
-            <option value="ping">Ping</option>
-            <option value="woodblock">Woodblock</option>
-            <option value="bell">Bell</option>
-            <option value="bass">Bass</option>
-            <option value="kick">Kick</option>
-            <option value="snare">Snare</option>
-            <option value="hihat">Hi-Hat</option>
-            <option value="sweep">Sweep</option>
-            <option value="zap">Zap</option>
-            <option value="bubble">Bubble</option>
-          </select>
-          </div>
-          <label class="small"><input type="checkbox" id="syncPan" checked> Pan sync to movement</label>
-          <div class="field">
-            <label>Pan Rate:</label>
-            <input type="range" id="panRate" min="0.1" max="2" step="0.1" value="0.5">
-            <span id="panRateLabel" class="small">0.5 Hz</span>
-          </div>
-          <div class="field">
-            <label>Cue Rate:</label>
-            <input type="range" id="cueRate" min="0.1" max="3" step="0.1" value="1.2">
-            <span id="cueRateLabel" class="small">1.2 Hz</span>
-          </div>
-          <div class="field">
-            <label>Volume:</label>
-            <input type="range" id="volume" min="0" max="100" step="5" value="60">
-            <span id="volumeLabel" class="small">60%</span>
+    <!-- Left Column: Controls -->
+    <aside class="sidebar">
+      <section class="panel collapsible" id="visualPanel">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">🎨</span>
+          Visual Settings
+          <span class="panel-actions">
+            <label class="toggle" title="Toggle Dark/Light">
+              <input type="checkbox" id="themeToggle">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </span>
+        </h2>
+
+        <div class="control-group">
+          <label class="control-label">Shape</label>
+          <div class="button-group" id="shapeControls">
+            <button data-shape="circle" class="active">⚪ Circle</button>
+            <button data-shape="square">⬛ Square</button>
+            <button data-shape="triangle">🔺 Triangle</button>
           </div>
         </div>
-        <div id="fileControls" class="row">
-          <button id="pickAudioFolder">Choose Folder</button>
-          <select id="audioSelect"><option value="">No audio</option></select>
+
+        <div class="control-group">
+          <label class="control-label">Shape Color</label>
+        <div class="color-swatches" id="shapeSwatches">
+          <button class="swatch swatch-green" data-color="#00ff00" title="Green"></button>
+          <button class="swatch swatch-blue" data-color="#0066ff" title="Blue"></button>
+          <button class="swatch swatch-yellow" data-color="#ffd400" title="Yellow"></button>
+          <button class="swatch swatch-red" data-color="#ff2a2a" title="Red"></button>
+          <button class="swatch swatch-white" data-color="#ffffff" title="White"></button>
+          <button class="swatch swatch-custom" id="shapeCustom" title="Custom Color"></button>
         </div>
-      </div>
-      <div class="row" id="deviceControls">
-        <label>Controller:</label>
-        <button id="connectHID">Connect HID Device</button>
-        <span id="deviceStatus" class="small">Not connected</span>
-        <label>Sensitivity:</label>
-        <input type="range" id="knobSens" min="1" max="50" step="1" value="5">
-        <span id="knobSensLabel" class="small">x5</span>
-      </div>
-      
-    </section>
-    <section class="panel">
-      <h2>Preview</h2>
-      <div class="preview previewContainer" id="previewContainer">
-        <canvas class="previewCanvas" id="previewCanvas" width="640" height="360"></canvas>
-      </div>
-      <div class="row">
-        <label>Speed:</label>
-        <input type="range" id="speed" min="50" max="600" step="10" value="250">
-        <span id="speedLabel" class="small">250 px/s</span>
-      </div>
-      <div class="row controls" id="speedBoost">
-        <label>Speed Boost:</label>
-        <button data-mult="1" class="active">1×</button>
-        <button data-mult="2">2×</button>
-        <button data-mult="3">3×</button>
-        <button data-mult="4">4×</button>
-      </div>
-      
-      
-      
-      <div class="row">
-        <label>Timer (minutes):</label>
-        <input type="number" id="timerMinutes" min="0" value="10" style="width:80px">
-        <span id="timerDisplay" class="small">10:00</span>
-      </div>
-      <div class="row">
-        <button class="primary" id="startSession">Start Session</button>
-        <button class="danger" id="endSession">End Session</button>
-      </div>
-      <div class="metrics">
-        <div>Status: <span id="statusText">Idle</span></div>
-        <div>Elapsed: <span id="elapsedText">00:00</span></div>
-      </div>
-      <div class="row" id="patientControls">
-        <label>Patient:</label>
-        <input type="text" id="patientName" placeholder="Patient Name" style="width:180px">
-        <button id="savePatient">Save Patient</button>
-        <select id="patientList" style="min-width:160px"></select>
-        <button id="loadPatient">Load Patient</button>
-        <button id="clearSessions">Clear Sessions</button>
-        <button id="deletePatient" class="danger">Delete Patient</button>
-        <span class="small">Sessions: <span id="sessionCount">0</span></span>
-        <span class="small">Last: <span id="lastSessionInfo">—</span></span>
-      </div>
-      <div class="row" id="patientHistory">
-        <label>Session History:</label>
-        <div id="sessionHistory" class="small" style="max-height:160px; overflow:auto; flex:1"></div>
-      </div>
-      <div class="small">This preview mirrors the patient's view.</div>
-      <div class="panel" style="margin-top:8px">
-        <h2>Network</h2>
-        <div class="row">
-          <label>Relay:</label>
-          <span id="relayStatusDot" class="statusDot"></span>
-          <span id="relayStatusText" class="small">Not running</span>
-          <button id="startRelayBtn">Copy Start Command</button>
-          <button id="stopRelayBtn">Stop Server</button>
         </div>
-        <div class="row">
-          <label>Step 3:</label>
-          <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8787" style="width:220px">
-          <input type="text" id="wsSession" placeholder="room-1" style="width:120px">
-          <button id="detectIP">Detect Local IP</button>
-          <button id="wsConnect">Connect</button>
-          <button id="wsDisconnect">Disconnect</button>
-          <span class="small">Status: <span id="wsStatus">Disconnected</span></span>
+
+        <div class="control-group">
+          <label class="control-label">Background</label>
+        <div class="color-swatches" id="bgSwatches">
+          <button class="swatch swatch-black" data-color="#000000" title="Black"></button>
+          <button class="swatch swatch-blue" data-color="#0066ff" title="Blue"></button>
+          <button class="swatch swatch-yellow" data-color="#ffd400" title="Yellow"></button>
+          <button class="swatch swatch-red" data-color="#ff2a2a" title="Red"></button>
+          <button class="swatch swatch-white" data-color="#ffffff" title="White"></button>
+          <button class="swatch swatch-custom" id="bgCustom" title="Custom Color"></button>
         </div>
-        <div class="row">
-          <label>Step 4:</label>
-          <input type="text" id="joinLink" readonly style="flex:1; min-width:260px">
-          <button id="copyJoinLink">Copy</button>
         </div>
-        <div id="osHelp" class="small" style="margin-top:6px"></div>
+
+        <div class="control-group">
+          <label class="control-label">Movement Direction</label>
+          <div class="button-group" id="directionControls">
+            <button data-direction="lr" class="active">HORIZ ↔️</button>
+            <button data-direction="ud">VERT ↕️</button>
+            <button data-direction="diag_down">DIAG L ↘️</button>
+            <button data-direction="diag_up">DIAG R ↗️</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Display Width</label>
+      <div class="button-group" id="widthControls">
+        <button data-width="full" class="active">Full</button>
+        <button data-width="reduced">Reduced</button>
       </div>
-    </section>
+      </div>
+
+        <div class="control-group">
+          <label class="control-label">Size: <span id="sizeLabel">28 px</span></label>
+          <input type="range" id="size" min="10" max="100" step="0.5" value="28" class="slider">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Vertical Position: <span id="yPercentLabel">50%</span></label>
+          <div class="slider-with-reset">
+            <input type="range" id="yPercent" min="0" max="100" step="1" value="50" class="slider">
+            <button id="yReset" class="btn-small">Reset</button>
+          </div>
+          <div class="control-row" style="margin-top:8px;">
+            <div class="control-group">
+              <label class="control-label" style="margin:0;">Vertical Oscillation</label>
+              <label class="toggle">
+                <input type="checkbox" id="yOscillateEnable">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Gradual Speed Ramp</label>
+              <label class="toggle">
+                <input type="checkbox" id="rampEnable">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Ramp Duration: <span id="rampLabel">10 s</span></label>
+            <input type="range" id="rampSeconds" min="1" max="60" step="1" value="10" class="slider">
+          </div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" id="networkPanel">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">✨</span>
+          Effects
+        </h2>
+
+        <div class="control-group">
+          <label class="control-label">Glow Pulse Effect</label>
+          <label class="toggle">
+            <input type="checkbox" id="glowEnable">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-group control-indent">
+          <label class="control-label">Intensity: <span id="glowIntensityLabel">100%</span></label>
+          <input type="range" id="glowIntensity" min="0" max="200" step="5" value="100" class="slider">
+        </div>
+
+        <div class="control-group control-indent">
+          <label class="control-label">Rate: <span id="glowRateLabel">0.5 Hz</span></label>
+          <input type="range" id="glowRate" min="0.1" max="3" step="0.1" value="0.5" class="slider">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Wiggle Effect</label>
+          <label class="toggle">
+            <input type="checkbox" id="wiggleEnable">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control-group control-indent">
+          <label class="control-label">Amount: <span id="wiggleLabel">0 px</span></label>
+          <input type="range" id="wiggleAmplitude" min="0" max="10" step="1" value="0" class="slider">
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Movement Style</label>
+          <div class="button-group" id="easingControls">
+            <button data-easing="linear" class="active">Linear</button>
+            <button data-easing="ease">Smooth</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">Edge Pause: <span id="edgePauseLabel">0 ms</span></label>
+          <input type="range" id="edgePause" min="0" max="150" step="10" value="0" class="slider">
+        </div>
+      </section>
+
+      <section class="panel panel-recording collapsible" id="recordingPanel">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">🔊</span>
+          Audio Settings
+        </h2>
+
+        <div class="control-group">
+          <div class="button-group" id="audioModeButtons">
+            <button data-mode="programmatic" class="active">Program</button>
+            <button id="loadAudioBtn">Load Audio</button>
+          </div>
+        </div>
+
+        <div class="control-group" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div>
+            <label class="control-label">Enable Audio</label>
+            <label class="toggle">
+              <input type="checkbox" id="audioEnable">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+          <button id="testSound" class="btn-small">Test Sound</button>
+        </div>
+
+        <div id="programmaticControls" class="audio-controls">
+          <div class="control-group">
+            <div class="button-group" id="soundToneToggle">
+              <button data-mode="sound" class="active">Sound</button>
+              <button data-mode="tone">Tone</button>
+            </div>
+          </div>
+
+          <div id="soundPresetControls" class="control-group">
+            <label class="control-label">Sound Type</label>
+            <select id="soundPreset" class="select-input">
+              <option value="pink">Pink Noise</option>
+              <option value="hybrid">Hybrid (noise + edge cues)</option>
+              <option value="click">Click</option>
+              <option value="ping">Ping</option>
+              <option value="woodblock">Woodblock</option>
+              <option value="bell">Bell</option>
+              <option value="bass">Bass</option>
+              <option value="kick">Kick</option>
+              <option value="snare">Snare</option>
+              <option value="hihat">Hi-Hat</option>
+              <option value="sweep">Sweep</option>
+              <option value="zap">Zap</option>
+              <option value="bubble">Bubble</option>
+            </select>
+          </div>
+
+          <div id="tonePresetControls" class="control-group">
+            <label class="control-label">Tone Preset</label>
+            <select id="tonePreset" class="select-input">
+              <option value="warm_low">Warm Low — 180 Hz @ 100 ms</option>
+              <option value="soft_pulse">Soft Pulse — 220 Hz @ 90 ms</option>
+              <option value="neutral_pulse">Neutral Pulse — 280 Hz @ 90 ms</option>
+              <option value="bright_pulse">Bright Pulse — 330 Hz @ 80 ms</option>
+              <option value="soft_tick">Soft Tick — 440 Hz @ 70 ms</option>
+              <option value="medium_tick">Medium Tick — 520 Hz @ 60 ms</option>
+              <option value="clear_click">Clear Click — 660 Hz @ 40 ms</option>
+              <option value="bright_ping">Bright Ping — 880 Hz @ 50 ms</option>
+              <option value="light_ping">Light Ping — 1000 Hz @ 50 ms</option>
+              <option value="sharp_cue">Sharp Cue — 1200 Hz @ 30 ms</option>
+              <option value="accent">Accent — 1500 Hz @ 30 ms</option>
+              <option value="spark">Spark — 1800 Hz @ 30 ms</option>
+              <option value="crisp">Crisp — 2000 Hz @ 30 ms</option>
+            </select>
+          </div>
+
+          <div id="toneFreqRow" class="control-group">
+            <label class="control-label">Frequency (Hz)</label>
+            <input type="number" id="toneFreq" min="100" max="2000" step="10" value="440" class="number-input">
+          </div>
+
+          <div id="toneDurRow" class="control-group">
+            <label class="control-label">Duration: <span id="toneDurationLabel">70 ms</span></label>
+            <input type="range" id="toneDuration" min="30" max="150" step="5" value="70" class="slider">
+          </div>
+
+          <div id="adsrField" class="adsr-controls">
+            <details class="adsr-details">
+              <summary>Advanced: ADSR Envelope</summary>
+              <div class="adsr-grid">
+                <div class="adsr-control">
+                  <label>Attack: <span id="adsrAttackLabel">8 ms</span></label>
+                  <input type="range" id="adsrAttack" min="5" max="20" step="1" value="8" class="slider">
+                </div>
+                <div class="adsr-control">
+                  <label>Decay: <span id="adsrDecayLabel">80 ms</span></label>
+                  <input type="range" id="adsrDecay" min="40" max="120" step="5" value="80" class="slider">
+                </div>
+                <div class="adsr-control">
+                  <label>Sustain: <span id="adsrSustainLabel">0.30</span></label>
+                  <input type="range" id="adsrSustain" min="0" max="1" step="0.05" value="0.3" class="slider">
+                </div>
+                <div class="adsr-control">
+                  <label>Release: <span id="adsrReleaseLabel">10 ms</span></label>
+                  <input type="range" id="adsrRelease" min="5" max="50" step="1" value="10" class="slider">
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Pan synced to movement</label>
+            <label class="toggle">
+              <input type="checkbox" id="syncPan" checked>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Pan Rate: <span id="panRateLabel">0.5 Hz</span></label>
+            <input type="range" id="panRate" min="0.1" max="2" step="0.1" value="0.5" class="slider">
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Cue Rate: <span id="cueRateLabel">1.2 Hz</span></label>
+            <input type="range" id="cueRate" min="0.1" max="3" step="0.1" value="1.2" class="slider">
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Volume: <span id="volumeLabel">60%</span></label>
+            <input type="range" id="volume" min="0" max="100" step="5" value="60" class="slider">
+          </div>
+        </div>
+
+        
+      </section>
+      <section class="panel collapsible" id="presetsPanel">
+        <h2 role="button" tabindex="0">PRESETS</h2>
+
+        <div class="preset-controls">
+          <div class="control-row">
+            <input type="text" id="presetName" placeholder="Preset name..." class="text-input flex-1">
+            <button id="savePreset" class="btn-secondary">Save</button>
+          </div>
+
+          <div class="control-row">
+            <select id="presetList" class="select-input flex-1"></select>
+            <button id="applyPreset" class="btn-secondary">Apply</button>
+            <button id="deletePreset" class="btn-danger-outline">Delete</button>
+          </div>
+
+          <div class="control-row">
+            <button id="exportPresets" class="btn-secondary">Export JSON</button>
+            <button id="importPresets" class="btn-secondary">Import JSON</button>
+          </div>
+        </div>
+      </section>
+      <section id="controllersPanel" class="panel collapsible">
+        <h2 role="button" tabindex="0">CONTROL</h2>
+        <div class="controller-content">
+          <div class="status-display">
+            <span id="ctlStatusDot" class="status-dot"></span>
+            <span id="ctlStatusText" class="status-value">No device</span>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">MIDI Input</label>
+            <select id="midiSelect" class="select-input"></select>
+          </div>
+
+          <div class="mapping-section">
+            <h3>Map Actions</h3>
+            <div class="mapping-buttons">
+              <button data-map-action="start" class="btn-map">Start Session</button>
+              <button data-map-action="stop" class="btn-map">End Session</button>
+              <button data-map-action="speed_up" class="btn-map">Speed +</button>
+              <button data-map-action="speed_down" class="btn-map">Speed −</button>
+              <button data-map-action="volume_up" class="btn-map">Volume +</button>
+              <button data-map-action="volume_down" class="btn-map">Volume −</button>
+              <button data-map-action="audio_toggle" class="btn-map">Audio Toggle</button>
+              <button data-map-action="glow_toggle" class="btn-map">Glow Toggle</button>
+              <button data-map-action="wiggle_toggle" class="btn-map">Wiggle Toggle</button>
+              <button data-map-action="lock_toggle" class="btn-map">Lock Toggle</button>
+              <button data-map-action="record_start" class="btn-map">Record Start</button>
+              <button data-map-action="record_stop" class="btn-map">Record Stop</button>
+              <button data-map-action="replay" class="btn-map">Replay</button>
+              <button data-map-action="shape_next" class="btn-map">Cycle Shape</button>
+              <button data-map-action="direction_next" class="btn-map">Cycle Direction</button>
+              <button data-map-action="easing_next" class="btn-map">Cycle Smoothness</button>
+              <button data-map-action="program_next" class="btn-map">Cycle Audio Preset</button>
+            </div>
+          </div>
+
+          <div class="mapping-section">
+            <h3>Current Mappings</h3>
+            <div id="ctlMappings" class="mappings-list"></div>
+          </div>
+
+          <div class="mapping-section">
+            <h3>Hardware Controller</h3>
+            <div class="control-row">
+              <button id="connectHID" class="btn-secondary">Connect HID Device</button>
+              <span id="deviceStatus" class="status-value">Not connected</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Sensitivity: <span id="knobSensLabel">x5</span></label>
+              <input type="range" id="knobSens" min="1" max="50" step="1" value="5" class="slider">
+            </div>
+            <div class="control-group" style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div>
+                <label class="control-label">Enable Lock Hotkey (L to lock, U to unlock)</label>
+                <label class="toggle">
+                  <input type="checkbox" id="lockHotkeyEnable" checked>
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Column: Session & Preview -->
+    <div class="main-content">
+      <section class="panel panel-session collapsible">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">⚡</span>
+          Session Control
+        </h2>
+
+        <div class="preview-container">
+          <canvas id="previewCanvas" class="preview-canvas" width="640" height="360"></canvas>
+        </div>
+
+        <div class="session-actions" style="margin-top:10px;">
+          <button id="startSession" class="btn-primary btn-large">
+            <span class="btn-icon">▶️</span>
+            Start Session
+          </button>
+          <button id="endSession" class="btn-danger btn-large">
+            <span class="btn-icon">⏹️</span>
+            End Session
+          </button>
+        </div>
+
+        <div class="session-controls">
+          <div class="control-row">
+            <div class="control-group">
+              <label class="control-label">Speed: <span id="speedLabel">250 px/s</span></label>
+              <div class="speed-control">
+                <button id="speedDown" class="btn-adjust">−</button>
+                <input type="range" id="speed" min="50" max="1800" step="1" value="250" class="slider slider-wide">
+                <button id="speedUp" class="btn-adjust">+</button>
+
+              </div>
+            </div>
+
+          </div>
+
+          
+
+            <div class="timer-section">
+            <div id="patientViewportShort" class="status-value" style="margin-bottom:8px; font-size:12px; opacity:0.8;">—</div>
+            <div class="timer-display">
+              <div class="timer-box">
+                <label>Duration (minutes)</label>
+                <input type="number" id="timerMinutes" min="0" value="10" class="timer-input">
+              </div>
+              <div class="timer-box">
+                <label>Remaining</label>
+                <div id="timerDisplay" class="timer-value">10:00</div>
+              </div>
+              <div class="timer-box">
+                <label>Elapsed</label>
+                <div id="elapsedText" class="timer-value">00:00</div>
+              </div>
+              
+            </div>
+
+            
+
+            <div class="status-bar">
+              <span class="status-label">Status:</span>
+              <span id="statusText" class="status-value">Idle</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-recording collapsible">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">�</span>
+          Recording & Playback
+        </h2>
+
+        <div class="recording-controls">
+          <div class="control-row">
+            <button id="recStart" class="btn-record">
+              <span class="record-dot">●</span>
+              Record
+            </button>
+            <button id="recStop" class="btn-secondary">Stop & Save</button>
+            
+          </div>
+
+          <div class="control-row">
+            <select id="recList" class="select-input flex-1"></select>
+            <button id="recPlay" class="btn-secondary">Replay</button>
+            <button id="recExport" class="btn-secondary">Export</button>
+            <button id="recImport" class="btn-secondary">Import</button>
+          </div>
+
+          <div class="control-row">
+            <button id="recDelete" class="btn-danger-outline">Delete</button>
+            <button id="recClear" class="btn-danger-outline">Clear All</button>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="panel collapsible">
+        <h2 role="button" tabindex="0">
+          <span class="panel-icon">👤</span>
+          Patient Management
+        </h2>
+
+        <div class="patient-controls">
+          <div class="control-row">
+            <input type="text" id="patientName" placeholder="Patient name..." class="text-input flex-1">
+            <button id="savePatient" class="btn-secondary">Save</button>
+          </div>
+
+          <div class="control-row">
+            <select id="patientList" class="select-input flex-1"></select>
+            <button id="loadPatient" class="btn-secondary">Load</button>
+            <button id="deletePatient" class="btn-danger-outline">Delete</button>
+          </div>
+
+          <div class="patient-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total Sessions:</span>
+              <span id="sessionCount" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Last Session:</span>
+              <span id="lastSessionInfo" class="stat-value">—</span>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Session History</label>
+            <div id="sessionHistory" class="session-history"></div>
+            <button id="clearSessions" class="btn-danger-outline btn-small">Clear All Sessions</button>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label">Session Notes</label>
+            <div class="control-row">
+              <select id="sessionSelect" class="select-input flex-1"></select>
+              <button id="loadSession" class="btn-secondary btn-small">Load</button>
+              <button id="saveSessionNotes" class="btn-secondary btn-small">Save Notes</button>
+              <button id="deleteSession" class="btn-danger-outline btn-small">Delete Session</button>
+            </div>
+            <textarea id="sessionNotes" class="textarea-input" placeholder="Enter session notes..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel collapsible" id="networkPanelSection">
+        <h2 id="networkHeading" role="button" tabindex="0">
+          <span class="panel-icon">🌐</span>
+          Network Connection
+        </h2>
+
+        <div class="network-controls">
+          <div class="control-group">
+            <label class="control-label">Connection Mode</label>
+            <select id="netMode" class="select-input">
+              <option value="relay">Relay (WebSocket)</option>
+              <option value="webrtc">WebRTC (P2P)</option>
+            </select>
+          </div>
+
+          <div id="webrtcControls" class="webrtc-section">
+            <div class="control-group">
+              <button id="rtcCreateOffer" class="btn-secondary">Create Offer</button>
+              <input type="text" id="rtcOffer" placeholder="Offer (base64)" class="text-input flex-1">
+            </div>
+            <div class="qr-container">
+              <img id="rtcOfferQR" alt="Offer QR Code" class="qr-code">
+            </div>
+            <div class="control-group">
+              <button id="rtcAcceptAnswer" class="btn-secondary">Accept Answer</button>
+              <input type="text" id="rtcAnswer" placeholder="Answer (base64)" class="text-input flex-1">
+            </div>
+            <div class="status-display">
+              <span class="status-label">WebRTC Status:</span>
+              <span id="rtcStatus" class="status-value">Idle</span>
+            </div>
+          </div>
+
+          <div class="relay-section">
+            <div class="status-display">
+              <span id="relayStatusDot" class="status-dot"></span>
+              <span id="relayStatusText" class="status-value">Not running</span>
+            </div>
+
+            <div class="control-row">
+              <button id="startRelayBtn" class="btn-secondary">Copy Start Command</button>
+              <button id="stopRelayBtn" class="btn-danger-outline">Stop Server</button>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Connection Details</label>
+              <div class="connection-inputs">
+                <input type="text" id="wsUrl" placeholder="ws://192.168.x.x:8787" class="text-input">
+                <input type="text" id="wsSession" placeholder="room-1" class="text-input">
+              </div>
+            </div>
+
+            <div class="control-row">
+              <button id="detectIP" class="btn-secondary">Detect Local IP</button>
+              <button id="wsConnect" class="btn-secondary">Connect</button>
+              <button id="wsDisconnect" class="btn-danger-outline">Disconnect</button>
+            </div>
+
+            <div class="status-display">
+              <span class="status-label">Status:</span>
+              <span id="wsStatus" class="status-value">Disconnected</span>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Patient Join Link</label>
+              <div class="control-row">
+                <input type="text" id="joinLink" readonly class="text-input flex-1">
+                <button id="copyJoinLink" class="btn-secondary">Copy</button>
+              </div>
+            </div>
+
+            <div id="osHelp" class="help-text"></div>
+          </div>
+        </div>
+      </section>
+
+      
+    </div>
   </main>
+
 
   <script src="js/bls.js"></script>
   <script src="js/audio.js"></script>
+  <script src="js/webrtc.js"></script>
+  <script src="js/recorder.js"></script>
+  <script src="js/recording-store.js"></script>
+  <script src="js/controllers.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>
