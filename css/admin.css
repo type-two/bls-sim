@@ -500,6 +500,7 @@ button:active {
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  margin-top: -8px;
 }
 
 .slider::-webkit-slider-thumb:hover {
@@ -537,6 +538,41 @@ button:active {
   flex: 1;
 }
 
+/* Light mode: thin dark track line */
+body:not(.theme-dark) .slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #222;
+  border-radius: 1px;
+}
+body:not(.theme-dark) .slider::-moz-range-track {
+  height: 2px;
+  background: #222;
+  border-radius: 1px;
+}
+body:not(.theme-dark) .slider::-ms-track {
+  height: 2px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+body:not(.theme-dark) .slider::-ms-fill-lower,
+body:not(.theme-dark) .slider::-ms-fill-upper {
+  background: #222;
+  border-radius: 1px;
+}
+
+/* Dark mode: keep subtle grey track */
+.theme-dark .slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #888;
+  border-radius: 1px;
+}
+.theme-dark .slider::-moz-range-track {
+  height: 2px;
+  background: #888;
+  border-radius: 1px;
+}
+
 /* === Checkboxes === */
 .checkbox-label {
   display: flex;
@@ -563,9 +599,8 @@ button:active {
   width: 100%;
   max-width: 640px;
   margin: 0 auto var(--space-lg);
-  background: #000;
+  background: transparent;
   border-radius: var(--radius-lg);
-  overflow: hidden;
   box-shadow: var(--shadow-lg);
 }
 
@@ -573,6 +608,7 @@ button:active {
   display: block;
   width: 100%;
   height: auto;
+  border-radius: var(--radius-lg);
 }
 .preview-info { font-size: 11px; color: #888; text-align: center; margin-top: 6px; }
 body.theme-dark .preview-info { color: #aaa; }
