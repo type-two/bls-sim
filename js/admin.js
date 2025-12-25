@@ -131,8 +131,9 @@ function recordSession(){ var n = (patientName.value||'').trim()||'Unnamed'; var
   function refreshPresetList(){ var names = BLS.listPresets(); var html=''; for(var i=0;i<names.length;i++){ var n=names[i]; html += '<option value="'+n+'">'+n+'</option>' } presetList.innerHTML = html }
   function applyState(next, broadcast){
     var prevRunning = state && !!state.running;
-    state = BLS.mergeState(state, next||{});
-    renderer.setState(state);
+    // Explicitly persist=true for Admin actions
+    state = BLS.mergeState(state, next||{}, true);
+    renderer.setState(state, false); // No need to double-save in renderer
     if(prevRunning !== !!state.running){ if(state.running){ renderer.start() } else { renderer.stop() } }
     if(broadcast){ chan.send(state) }
     try{ if(window.Recorder && Recorder.running){ Recorder.recordState(BLS.loadState()) } }catch(_){ }
@@ -147,8 +148,8 @@ function recordSession(){ var n = (patientName.value||'').trim()||'Unnamed'; var
   function labelForEasing(e){ return e==='ease'? 'Ease In-Out' : 'Linear' }
   function labelForProgram(p){ var map={pink:'Pink Noise', hybrid:'Hybrid', tone:'Tone', click:'Click', ping:'Ping', woodblock:'Woodblock', bell:'Bell', bass:'Bass', kick:'Kick', snare:'Snare', hihat:'Hi-Hat', sweep:'Sweep', zap:'Zap', bubble:'Bubble'}; return map[p]||p }
   function applyStateLocal(next){
-    state = BLS.mergeState(state, next||{});
-    renderer.setState(state);
+    state = BLS.mergeState(state, next||{}, true);
+    renderer.setState(state, false);
     if(speed){ speed.value = String(parseInt(state.speed||parseInt(speed.value,10)||250, 10)) }
     if(size){ size.value = String(state.size||parseFloat(size.value)||80) }
     if(glowEnable){ glowEnable.checked = !!state.glowEnabled }
